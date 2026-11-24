@@ -1078,7 +1078,7 @@ Update the HUD timer through requestAnimationFrame without forcing unrelated com
 
 ## D6 — Volume Dial
 
-Use an eight-point compass-rose SVG volume dial.
+Use an ouroboros (a serpent biting its tail) SVG volume dial.
 
 It must support:
 
@@ -1105,7 +1105,7 @@ The geometry must remain sharp and industrial.
 
 Use Lucide icons.
 
-The custom compass dial and functional HUD geometry are exceptions to the Lucide-only icon requirement.
+The custom ouroboros dial and functional HUD geometry are exceptions to the Lucide-only icon requirement.
 
 No emoji icons.
 
@@ -1274,7 +1274,7 @@ Include the required playback controls:
 - Scrubber.
 - Playback position.
 - Track duration.
-- Compass volume control.
+- Ouroboros volume control.
 - Equalizer access.
 
 Queue and lyrics access must be discoverable when their corresponding functionality is implemented.
@@ -1941,7 +1941,7 @@ Implement:
 - Shuffle.
 - Repeat.
 - Keyboard-accessible playback scrubber.
-- Compass volume dial.
+- Ouroboros volume dial.
 - Digital playback timer.
 - Current track path.
 - Current track artwork.
@@ -3171,7 +3171,7 @@ Perform or provide exact instructions for the following journey:
 8. Pause and resume.
 9. Seek through the track.
 10. Adjust volume.
-11. Test the compass dial using mouse and keyboard.
+11. Test the ouroboros dial using mouse and keyboard.
 12. Open the equalizer.
 13. Adjust each EQ band.
 14. Reset EQ.

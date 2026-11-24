@@ -150,7 +150,7 @@ export function PlayerHud() {
           <Sliders size={18} />
         </button>
 
-        {/* 8-Point Compass Rose Volume Dial */}
+        {/* Ouroboros volume dial */}
         <VolumeDial />
 
         {/* Compact Terminal Log in HUD */}

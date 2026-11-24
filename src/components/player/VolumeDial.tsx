@@ -1,15 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { usePlayerStore } from "@/stores/playerStore";
 
-/**
- * 8-point compass-rose dial volume control
- *
- * Supports:
- * - Drag / click to set volume (270° sweep from -135° to +135°)
- * - Mouse wheel scrolling
- * - Keyboard navigation (Arrow keys, PageUp/PageDown, Home/End)
- * - Accessible slider semantics (role="slider")
- */
 export function VolumeDial() {
   const volume = usePlayerStore((s) => s.volume);
   const setVolume = usePlayerStore((s) => s.setVolume);
@@ -52,18 +43,9 @@ export function VolumeDial() {
     setIsDragging(true);
     calculateVolumeFromEvent(e.nativeEvent);
 
-    const onPointerMove = (ev: PointerEvent) => {
-      calculateVolumeFromEvent(ev);
-    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    (e.currentTarget as HTMLElement).focus();
 
-    const onPointerUp = () => {
-      setIsDragging(false);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -104,8 +86,6 @@ export function VolumeDial() {
     setVolume(Math.max(0, Math.min(1, volume + delta)));
   };
 
-  // Dial angle in degrees: -135° to +135°
-  const needleAngle = -135 + volume * 270;
   const volPercent = Math.round(volume * 100);
 
   return (
@@ -120,10 +100,14 @@ export function VolumeDial() {
         aria-valuenow={volPercent}
         aria-valuetext={`${volPercent}%`}
         onPointerDown={handlePointerDown}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) calculateVolumeFromEvent(e.nativeEvent);
+        }}
+        onLostPointerCapture={() => setIsDragging(false)}
         onWheel={handleWheel}
         onKeyDown={handleKeyDown}
-        className={`relative flex h-10 w-10 shrink-0 cursor-pointer select-none items-center justify-center transition-fast focus-visible:outline-2 focus-visible:outline-bright-red ${
-          isDragging ? "hud-corners-active" : ""
+        className={`relative flex h-12 w-12 touch-none shrink-0 cursor-pointer select-none items-center justify-center transition-fast focus-visible:outline-2 focus-visible:outline-bright-red ${
+          isDragging ? "text-white" : "text-muted hover:text-white"
         }`}
         title={`Volume: ${volPercent}%`}
       >
@@ -132,101 +116,34 @@ export function VolumeDial() {
           className="h-full w-full"
           aria-hidden="true"
         >
-          {/* Outer ring */}
-          <circle
-            cx="24"
-            cy="24"
-            r="21"
+          <path
+            fill="currentColor"
+            d="M29 6 C18 1 5 10 4 23 C3 36 13 45 25 44
+               C37 44 46 33 44 21 C43 14 39 9 33 7
+               L36 11 C42 17 42 29 36 35 C29 43 17 40 12 34
+               C5 25 9 14 18 11 C21 10 24 10 26 11
+               L30 14 L36 12 L39 8 L33 9 L38 6 L32 4 Z"
+          />
+          <circle cx="31" cy="8" r="1.1" fill="#080202" />
+          <path
+            d="M15.5 32.5 A12 12 0 1 1 32.5 32.5"
             fill="none"
             stroke="#8A5A5A"
-            strokeWidth="1"
-            strokeDasharray="1 3"
+            strokeWidth="2"
           />
-
-          {/* Active arc track: 270 deg from -135 to current */}
-          <circle
-            cx="24"
-            cy="24"
-            r="19"
+          <path
+            d="M15.5 32.5 A12 12 0 1 1 32.5 32.5"
             fill="none"
-            stroke="#8A5A5A"
-            strokeWidth="1.5"
-            strokeOpacity="0.4"
+            stroke="#FF3333"
+            strokeWidth="2"
+            pathLength="100"
+            strokeDasharray={`${volPercent} 100`}
           />
-
-          {/* 8 Cardinal & Intercardinal Ticks */}
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-            const isCardinal = deg % 90 === 0;
-            const len = isCardinal ? 3.5 : 2;
-            const rad = ((deg - 90) * Math.PI) / 180;
-            const x1 = 24 + 19 * Math.cos(rad);
-            const y1 = 24 + 19 * Math.sin(rad);
-            const x2 = 24 + (19 - len) * Math.cos(rad);
-            const y2 = 24 + (19 - len) * Math.sin(rad);
-
-            // Is this tick reached by current volume?
-            // Convert deg (0=N, 90=E, 180=S, 270=W) to knob coordinate
-            // deg: 225=SW(-135°), 270=W(-90°), 315=NW(-45°), 0=N(0°), 45=NE(+45°), 90=E(+90°), 135=SE(+135°)
-            const shiftedDeg = deg >= 180 ? deg - 360 : deg;
-            const isCovered =
-              shiftedDeg >= -135 &&
-              shiftedDeg <= 135 &&
-              needleAngle >= shiftedDeg;
-
-            return (
-              <line
-                key={deg}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke={isCovered ? "#FF3333" : "#8A5A5A"}
-                strokeWidth={isCardinal ? "1.5" : "1"}
-              />
-            );
-          })}
-
-          {/* 8-Point Compass Rose Geometric Star (Fixed Base) */}
-          <g transform="translate(24, 24)" opacity="0.6">
-            {/* North Point */}
-            <polygon points="0,-14 2,-4 0,0" fill="#D32F2F" />
-            <polygon points="0,-14 -2,-4 0,0" fill="#8A5A5A" />
-            {/* South Point */}
-            <polygon points="0,14 2,4 0,0" fill="#8A5A5A" />
-            <polygon points="0,14 -2,4 0,0" fill="#8A5A5A" />
-            {/* East Point */}
-            <polygon points="14,0 4,2 0,0" fill="#8A5A5A" />
-            <polygon points="14,0 4,-2 0,0" fill="#8A5A5A" />
-            {/* West Point */}
-            <polygon points="-14,0 -4,2 0,0" fill="#8A5A5A" />
-            <polygon points="-14,0 -4,-2 0,0" fill="#8A5A5A" />
-
-            {/* Corner Points (NE, NW, SE, SW) */}
-            <polygon points="8,-8 1,-3 0,0" fill="#8A5A5A" />
-            <polygon points="-8,-8 -1,-3 0,0" fill="#8A5A5A" />
-            <polygon points="8,8 1,3 0,0" fill="#8A5A5A" />
-            <polygon points="-8,8 -1,3 0,0" fill="#8A5A5A" />
-          </g>
-
-          {/* Rotating Indicator Arrow / Needle */}
-          <g transform={`translate(24, 24) rotate(${needleAngle})`}>
-            {/* Center Hub */}
-            <circle cx="0" cy="0" r="3" fill="#D32F2F" />
-            {/* Needle pointing outward to current volume */}
-            <polygon
-              points="0,-18 2.5,-3 -2.5,-3"
-              fill="#FF3333"
-            />
-            <polygon
-              points="0,6 1.5,0 -1.5,0"
-              fill="#8A5A5A"
-            />
-          </g>
         </svg>
       </div>
 
       <span className="w-8 font-mono text-[11px] text-muted text-right">
-        {volPercent}
+        {volPercent}%
       </span>
     </div>
   );

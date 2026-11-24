@@ -132,3 +132,7 @@ Run npm test, npm run build, then cargo fmt --check, cargo check, cargo test and
 ### Startup repair
 
 The SQL plugin now receives its database URL in an array. A new isolated Linux profile created orphetune.db and reached the startup sidecar version check. This clears the reproduced plugin panic. The runtime also emitted a GStreamer plugin-scanner warning. Audio output still requires verification.
+
+### Volume control
+
+D6 now specifies the user-requested ouroboros. Its inner arc follows the 270-degree input sweep. Chromium verified Home 0%, Arrow Up 5%, Page Up 15%, End 100%, a pointer press at twelve o’clock 50%, and wheel-down 45%. The 48-pixel control was screenshot-inspected. TypeScript, production build and 12 Vitest tests passed.
