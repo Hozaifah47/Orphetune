@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Library, Search, ListMusic, Mic2 } from "lucide-react";
-import { useAppStore } from "@/stores";
+import { useAppStore, usePlaylistStore } from "@/stores";
 import type { View } from "@/stores";
 
 interface NavItem {
@@ -19,6 +20,13 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const currentView = useAppStore((s) => s.currentView);
   const setView = useAppStore((s) => s.setView);
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const selectPlaylist = usePlaylistStore((s) => s.selectPlaylist);
+  const loadPlaylists = usePlaylistStore((s) => s.loadPlaylists);
+
+  useEffect(() => {
+    void loadPlaylists();
+  }, [loadPlaylists]);
 
   return (
     <aside className="flex h-full w-48 shrink-0 flex-col border-r border-non-text/20 py-6">
@@ -48,6 +56,27 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Playlist shortcuts */}
+      {playlists.length > 0 && (
+        <div className="mt-6 flex flex-col gap-0.5 px-2">
+          <p className="px-3 pb-1 font-sans text-[10px] font-medium uppercase tracking-wider text-non-text">
+            Playlists
+          </p>
+          {playlists.slice(0, 8).map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                setView("playlists");
+                void selectPlaylist(p.id);
+              }}
+              className="truncate px-3 py-1 text-left font-sans text-xs text-muted transition-fast hover:text-white"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-auto px-5 pb-2">
         <p className="font-mono text-[10px] text-non-text">v0.1.0</p>
