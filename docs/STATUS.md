@@ -156,3 +156,7 @@ The missing-folder branch previously wrote only to the HUD log, which was hidden
 ### Live provider check
 
 The inherited system wrapper reported yt-dlp 2024.04.09. It could search but returned no audio format for the Blender Foundation’s Big Buck Bunny. Using the pinned, SHA-256-verified 2026.11.23 release, the same public video produced measured progress, a completed MP3, and its exact final path in a disposable directory. This check used host FFmpeg. Availability of individual songs depends on the provider.
+
+### Linux packaging
+
+The baseline bundler produced deb and rpm packages before panicking when looking for an AppImage icon. Configuring the tracked square platform icons allowed all three packages to build. The Ubuntu release binary opened a native WebKit window in a disposable profile. A clean operating-system install has not been exercised.
