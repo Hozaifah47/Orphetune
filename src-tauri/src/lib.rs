@@ -8,10 +8,11 @@ pub mod sidecar;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn get_migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "create initial tables",
-        sql: r#"
+    vec![
+        Migration {
+            version: 1,
+            description: "create initial tables",
+            sql: r#"
             CREATE TABLE IF NOT EXISTS tracks (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 path        TEXT    NOT NULL UNIQUE,
@@ -59,8 +60,16 @@ fn get_migrations() -> Vec<Migration> {
                 value TEXT NOT NULL
             );
         "#,
-        kind: MigrationKind::Up,
-    }]
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "identify the Downloads playlist",
+            sql: "ALTER TABLE playlists ADD COLUMN system_key TEXT;
+              CREATE UNIQUE INDEX idx_playlists_system_key ON playlists(system_key);",
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

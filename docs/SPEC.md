@@ -3776,3 +3776,6 @@ Your ultimate objective is to transform Orphetune into a polished, efficient, se
 **Functionality over decoration.**
 
 **Preserve what works. Repair what does not. Verify everything.**
+## Download interaction amendment
+
+Selecting Download in Search must immediately show the operation on the selected result. Prompt for a library folder when required, display measured transfer percentage and MP3 finishing state, and report the saved file path or a retryable error. Successful downloads belong to a persistent Downloads playlist.

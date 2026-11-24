@@ -177,6 +177,30 @@ pub async fn search_web(
     Ok(results)
 }
 
+fn download_percent(line: &str) -> Option<f32> {
+    let value = line
+        .strip_prefix("orphetune-progress:")?
+        .trim()
+        .strip_suffix('%')?
+        .trim()
+        .parse::<f32>()
+        .ok()?;
+    (0.0..=100.0).contains(&value).then_some(value)
+}
+
+#[test]
+fn parses_only_measured_download_percentages() {
+    assert_eq!(download_percent("orphetune-progress: 25.7%"), Some(25.7));
+    for line in [
+        "unknown",
+        "orphetune-progress: NA",
+        "orphetune-progress: NaN%",
+        "orphetune-progress: 110%",
+    ] {
+        assert_eq!(download_percent(line), None);
+    }
+}
+
 /// Download a video as mp3 using yt-dlp sidecar + ffmpeg sidecar
 pub async fn download_track(
     app: tauri::AppHandle,
@@ -227,15 +251,21 @@ pub async fn download_track(
         "--ffmpeg-location",
         &ffmpeg_path.to_string_lossy(),
         "--newline",
+        "--color",
+        "never",
+        "--progress",
+        "--no-simulate",
+        "--print",
+        "after_move:orphetune-file:%(filepath)j",
         "--progress-template",
-        "[download] %(progress._percent_str)s",
+        "download:orphetune-progress:%(progress._percent_str)s",
         "-o",
         &out_template_str,
         &video_url,
     ]);
 
     cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::inherit());
+    cmd.stderr(std::process::Stdio::piped());
 
     let mut child = cmd
         .spawn()
@@ -244,6 +274,21 @@ pub async fn download_track(
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let mut reader = BufReader::new(stdout).lines();
 
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or("Failed to capture download errors")?;
+    let errors = tokio::spawn(async move {
+        let mut errors = BufReader::new(stderr).lines();
+        let mut last = String::new();
+        while let Ok(Some(line)) = errors.next_line().await {
+            if !line.trim().is_empty() {
+                last = line.chars().take(512).collect();
+            }
+        }
+        last
+    });
+    let mut downloaded_path: Option<PathBuf> = None;
     let mut cancellation = tokio::time::interval(std::time::Duration::from_millis(200));
     loop {
         tokio::select! {
@@ -251,13 +296,10 @@ pub async fn download_track(
                 match line_res {
                     Ok(Some(line)) => {
                         let line = line.trim();
-                        if line.starts_with("[download]") {
-                            if let Some(pct_str) = line.strip_prefix("[download]") {
-                                let cleaned = pct_str.replace('%', "").trim().to_string();
-                                if let Ok(val) = cleaned.parse::<f32>() {
-                                    let _ = on_event.send(DownloadEvent::Progress { percent: val });
-                                }
-                            }
+                        if let Some(percent) = download_percent(line) {
+                            let _ = on_event.send(DownloadEvent::Progress { percent });
+                        } else if let Some(json) = line.strip_prefix("orphetune-file:") {
+                            downloaded_path = serde_json::from_str(json).ok();
                         } else if !line.is_empty() {
                             let _ = on_event.send(DownloadEvent::Log {
                                 level: "FETCH".into(),
@@ -294,7 +336,12 @@ pub async fn download_track(
         .map_err(|e| format!("Failed waiting for yt-dlp child: {}", e))?;
 
     if !status.success() {
-        let msg = format!("Download failed with status: {:?}", status.code());
+        let detail = errors.await.unwrap_or_default();
+        let msg = if detail.is_empty() {
+            format!("Download failed ({status})")
+        } else {
+            detail
+        };
         let _ = on_event.send(DownloadEvent::Error {
             message: msg.clone(),
         });
@@ -307,28 +354,13 @@ pub async fn download_track(
         message: format!("Download complete for {}. Scanning file...", video_id),
     });
 
-    // Locate the downloaded .mp3 file
-    let pattern = format!("[{}].mp3", video_id);
-    let mut downloaded_path: Option<PathBuf> = None;
-
-    if let Ok(entries) = std::fs::read_dir(&dest_path) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                if name.contains(&pattern) || name.ends_with(".mp3") && name.contains(&video_id) {
-                    downloaded_path = Some(p);
-                    break;
-                }
-            }
-        }
+    let file_path = downloaded_path.ok_or("yt-dlp did not report the completed MP3 path.")?;
+    if !file_path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"))
+    {
+        return Err("The completed download was not an MP3.".into());
     }
-
-    let file_path = downloaded_path.ok_or_else(|| {
-        format!(
-            "Could not find downloaded .mp3 file for {} in {}",
-            video_id, dest_dir
-        )
-    })?;
 
     // Ingest the downloaded track using scan_file logic
     let cache_dir = app

@@ -4,18 +4,20 @@ import {
   searchWebTracks,
   downloadTrack,
   cancelDownload,
-  upsertTrack,
+  saveDownload,
   type TrackRow,
   type WebSearchResult,
   type DownloadEventData,
 } from "@/services";
+import { usePlaylistStore } from "./playlistStore";
 import { useLibraryStore } from "./libraryStore";
 import { useLogStore } from "./logStore";
 
 export interface DownloadStatus {
   videoId: string;
-  percent: number;
-  status: "idle" | "downloading" | "complete" | "error";
+  percent?: number;
+  path?: string;
+  status: "choosing" | "saving" | "cancelled" | "downloading" | "complete" | "error";
   error?: string;
 }
 
@@ -77,116 +79,56 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
   },
 
-  triggerDownload: async (item: WebSearchResult) => {
+  triggerDownload: async (item) => {
+    const previous = get().downloads[item.id]?.status;
+    if (previous === "choosing" || previous === "downloading" || previous === "saving") return;
+    const update = (status: Omit<DownloadStatus, "videoId">) => {
+      set(state => ({ downloads: { ...state.downloads, [item.id]: { videoId: item.id, ...status } } }));
+    };
     const addLog = useLogStore.getState().addEntry;
-    const libraryPath = useLibraryStore.getState().libraryPath;
-
-    if (!libraryPath) {
-      addLog("ERR", "Cannot download: No library folder selected. Select a folder in Library first.");
-      return;
-    }
-
-    set((state) => ({
-      downloads: {
-        ...state.downloads,
-        [item.id]: {
-          videoId: item.id,
-          percent: 0,
-          status: "downloading",
-        },
-      },
-    }));
-
-    addLog("FETCH", `Starting download: ${item.title}`);
-
     try {
-      await downloadTrack(
-        item.id,
-        libraryPath,
-        async (evt: DownloadEventData) => {
-          switch (evt.event) {
-            case "Log":
-              addLog(
-                evt.data.level as "INFO" | "FETCH" | "WARN" | "ERR",
-                evt.data.message,
-              );
-              break;
-            case "Progress":
-              set((state) => ({
-                downloads: {
-                  ...state.downloads,
-                  [item.id]: {
-                    videoId: item.id,
-                    percent: evt.data.percent,
-                    status: "downloading",
-                  },
-                },
-              }));
-              break;
-            case "Complete":
-              // Upsert newly ingested track into SQLite
-              await upsertTrack(evt.data.track);
-              await useLibraryStore.getState().loadTracks();
-
-              set((state) => ({
-                downloads: {
-                  ...state.downloads,
-                  [item.id]: {
-                    videoId: item.id,
-                    percent: 100,
-                    status: "complete",
-                  },
-                },
-              }));
-              addLog("INFO", `Downloaded and saved: ${evt.data.track.title}`);
-              break;
-            case "Error":
-              set((state) => ({
-                downloads: {
-                  ...state.downloads,
-                  [item.id]: {
-                    videoId: item.id,
-                    percent: 0,
-                    status: "error",
-                    error: evt.data.message,
-                  },
-                },
-              }));
-              addLog("ERR", `Download error: ${evt.data.message}`);
-              break;
-          }
-        },
-      );
-    } catch (e) {
-      const errStr = e instanceof Error ? e.message : String(e);
-      set((state) => ({
-        downloads: {
-          ...state.downloads,
-          [item.id]: {
-            videoId: item.id,
-            percent: 0,
-            status: "error",
-            error: errStr,
-          },
-        },
-      }));
-      addLog("ERR", `Download failed: ${errStr}`);
+      if (!useLibraryStore.getState().libraryPath) {
+        update({ status: "choosing" });
+        await useLibraryStore.getState().init();
+        if (!useLibraryStore.getState().libraryPath) await useLibraryStore.getState().pickFolder();
+      }
+      const root = useLibraryStore.getState().libraryPath;
+      if (!root) {
+        update({ status: "error", error: "Choose a library folder to save this download." });
+        return;
+      }
+      update({ status: "downloading" });
+      const track = await downloadTrack(item.id, root, (event: DownloadEventData) => {
+        if (get().downloads[item.id]?.status !== "downloading") return;
+        if (event.event === "Progress") update({ status: "downloading", percent: event.data.percent });
+        if (event.event === "Log") addLog("FETCH", event.data.message);
+      });
+      update({ status: "saving", path: track.path });
+      await saveDownload(track);
+      update({ status: "complete", path: track.path });
+      addLog("INFO", `Saved to Downloads: ${track.title}`);
+      try {
+        const playlists = usePlaylistStore.getState();
+        await Promise.all([useLibraryStore.getState().loadTracks(), playlists.loadPlaylists()]);
+        const active = usePlaylistStore.getState();
+        if (active.playlists.some(p => p.system_key === "downloads" && p.id === active.selectedPlaylistId)) {
+          await active.selectPlaylist(active.selectedPlaylistId);
+        }
+      } catch (error) {
+        addLog("WARN", `Saved download. Refresh library to see it: ${String(error)}`);
+      }
+    } catch (error) {
+      const message = String(error);
+      update(message.includes("cancelled by user") ? { status: "cancelled" } : { status: "error", error: message });
+      addLog("WARN", message);
     }
   },
 
-  cancelActiveDownload: async (videoId: string) => {
+  cancelActiveDownload: async (videoId) => {
     try {
       await cancelDownload(videoId);
-      set((state) => {
-        const next = { ...state.downloads };
-        delete next[videoId];
-        return { downloads: next };
-      });
-      useLogStore.getState().addEntry("WARN", `Download cancelled: ${videoId}`);
-    } catch (e) {
-      useLogStore
-        .getState()
-        .addEntry("ERR", `Failed to cancel download: ${String(e)}`);
+    } catch (error) {
+      useLogStore.getState().addEntry("ERR", String(error));
     }
   },
 }));

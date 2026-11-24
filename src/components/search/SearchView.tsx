@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Globe, Download, Check, X, Play, Music } from "lucide-react";
-import { useSearchStore, usePlayerStore, type WebSearchResult } from "@/stores";
+import { useSearchStore, usePlayerStore, usePlaylistStore, useAppStore, type WebSearchResult } from "@/stores";
 import { TerminalLog } from "@/components/hud/TerminalLog";
 import { CoverArt } from "@/components/library/CoverArt";
 import type { TrackRow } from "@/services/db";
@@ -233,10 +233,18 @@ export function SearchView() {
                       {/* Download Action */}
                       <div className="shrink-0">
                         {isComplete ? (
-                          <span className="flex items-center gap-1 font-sans text-xs text-bright-red">
+                          <button className="flex items-center gap-1 font-sans text-xs text-bright-red" title={dl.path}
+                            onClick={() => {
+                              const playlists = usePlaylistStore.getState();
+                              const list = playlists.playlists.find(p => p.system_key === "downloads");
+                              useAppStore.getState().setView("playlists");
+                              if (list) void playlists.selectPlaylist(list.id);
+                            }}>
                             <Check size={14} />
-                            <span>Saved</span>
-                          </span>
+                            <span>Open Downloads</span>
+                          </button>
+                        ) : dl?.status === "choosing" || dl?.status === "saving" ? (
+                          <span role="status" className="text-xs text-muted">{dl.status === "choosing" ? "Selecting folder…" : "Saving to Downloads…"}</span>
                         ) : isDownloading ? (
                           <button
                             onClick={() => void cancelActiveDownload(item.id)}
@@ -259,25 +267,20 @@ export function SearchView() {
                       </div>
                     </div>
 
-                    {/* Real Percentage Progress Bar */}
-                    {isDownloading && (
-                      <div className="flex items-center gap-2 pt-1">
-                        <div className="relative h-1 flex-1 bg-non-text/30">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-crimson transition-fast"
-                            style={{
-                              width: `${String(Math.min(100, Math.max(0, dl.percent)))}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="font-mono text-[10px] text-bright-red shrink-0">
-                          {String(Math.round(dl.percent))}%
-                        </span>
+                    {isDownloading && (dl.percent === undefined ? (
+                      <p role="status" className="text-xs text-muted">Starting download…</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <progress aria-label={`Download progress for ${item.title}`} max={100} value={dl.percent}
+                          className="h-1 flex-1 accent-crimson" />
+                        <span className="text-xs text-white">{Math.floor(dl.percent)}%{dl.percent === 100 ? " · Finishing MP3…" : ""}</span>
                       </div>
-                    )}
+                    ))}
+                    {isComplete && <p role="status" className="break-all text-xs text-muted">Saved to {dl.path}</p>}
+                    {dl?.status === "cancelled" && <p role="status" className="text-xs text-muted">Download cancelled</p>}
 
                     {isError && dl.error && (
-                      <p className="font-mono text-[10px] text-crimson truncate">
+                      <p role="alert" className="break-words text-xs text-bright-red">
                         {dl.error}
                       </p>
                     )}

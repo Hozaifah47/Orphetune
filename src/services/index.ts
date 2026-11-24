@@ -2,6 +2,7 @@ export { getDb } from "./db";
 export type { TrackRow, PlaylistRow, LyricsRow } from "./db";
 export {
   upsertTrack,
+  saveDownload,
   getAllTracks,
   getKnownFiles,
   searchTracks,

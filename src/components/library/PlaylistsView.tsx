@@ -166,6 +166,7 @@ export function PlaylistsView() {
                   {playlist.name}
                 </button>
               )}
+              {!playlist.system_key && <>
               <button
                 onClick={() => {
                   setEditingId(playlist.id);
@@ -183,6 +184,7 @@ export function PlaylistsView() {
               >
                 <Trash2 size={14} />
               </button>
+              </>}
             </div>
           ))}
         </div>

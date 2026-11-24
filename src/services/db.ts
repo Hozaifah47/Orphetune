@@ -57,6 +57,24 @@ export async function upsertTracks(tracks: ScannedTrack[]): Promise<void> {
   );
 }
 
+export async function saveDownload(track: ScannedTrack): Promise<void> {
+  await upsertTrack(track);
+  const database = await getDb();
+  await database.execute(
+    `INSERT INTO playlists(name, system_key) VALUES ('Downloads', 'downloads')
+     ON CONFLICT(system_key) DO UPDATE SET updated_at = unixepoch()`,
+  );
+  await database.execute(
+    `INSERT INTO playlist_tracks(playlist_id, track_id, position)
+     SELECT p.id, t.id,
+       (SELECT COALESCE(MAX(position), -1) + 1 FROM playlist_tracks WHERE playlist_id = p.id)
+     FROM playlists p JOIN tracks t ON t.path = $1
+     WHERE p.system_key = 'downloads'
+     ON CONFLICT(playlist_id, track_id) DO NOTHING`,
+    [track.path],
+  );
+}
+
 export async function getAllTracks(): Promise<TrackRow[]> {
   const d = await getDb();
   return d.select<TrackRow[]>(
@@ -97,6 +115,7 @@ export async function updateTrackCover(
 // ─── Playlists ───────────────────────────────────────────────────────
 
 export interface PlaylistRow {
+  system_key: string | null;
   id: number;
   name: string;
   created_at: number;

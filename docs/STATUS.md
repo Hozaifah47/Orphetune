@@ -148,3 +148,7 @@ Each group of up to 50 metadata records now uses one parameterized insert with u
 ### Sidecar invocation
 
 yt-dlp and FFmpeg now resolve alongside the installed executable. Removed executable lookup in the working directory and PATH. Searches are length-bounded. Download processes ignore user configuration, disable overwrite, inherit stderr to avoid a full unread pipe, and register cancellation until the operation ends. Strict Clippy passed. Codec portability, signed sidecar provenance and cancellation of descendant processes remain open.
+
+### Download feedback and persistence
+
+The missing-folder branch previously wrote only to the HUD log, which was hidden at typical window sizes. Search now prompts for a folder, shows starting, measured percent, finishing, saving and retryable errors on the result, and links to the Downloads playlist. The native process reports the exact final MP3 path. Import waits for the command result. SQLite migration 2 adds a nullable system playlist key to preserve existing custom playlists. Unique membership prevents duplicate entries when retrying. A local generated WAV served over HTTP exercised yt-dlp and FFmpeg with real transfer reports from 0.2% through 100% and a final MP3. A Chromium test with simulated transfer IPC and real SQLite exercised Search → 42% → saved path → Downloads → reload. Rust parser and path tests, strict Clippy, TypeScript, production build, and 12 frontend tests passed.
