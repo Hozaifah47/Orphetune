@@ -45,13 +45,13 @@ export function LibraryView() {
   if (!libraryPath) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <FolderOpen size={48} className="text-non-text" />
+        <FolderOpen size={48} className="text-muted" />
         <p className="font-sans text-sm text-muted">
           Select a folder to scan your music library
         </p>
         <button
           onClick={() => void pickFolder()}
-          className="bg-crimson px-4 py-2 font-sans text-sm text-white transition-fast hover:bg-bright-red"
+          className="bg-crimson px-4 py-2 font-sans text-sm text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
         >
           Choose folder
         </button>
@@ -88,7 +88,7 @@ export function LibraryView() {
                 const first = albumTracks[0];
                 if (first) void playTrack(first, albumTracks);
               }}
-              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
             >
               <Play size={14} fill="currentColor" />
               <span>Play album</span>
@@ -144,7 +144,7 @@ export function LibraryView() {
             className="text-muted transition-fast hover:text-white disabled:opacity-40"
             aria-label="Rescan library"
           >
-            <RefreshCw size={16} className={isScanning ? "animate-spin" : ""} />
+            <RefreshCw size={16} />
           </button>
         </div>
       </div>

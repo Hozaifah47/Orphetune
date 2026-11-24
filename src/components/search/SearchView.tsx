@@ -62,13 +62,13 @@ export function SearchView() {
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder="Search tracks, artists, albums, or web..."
           aria-label="Search"
-          className="flex-1 bg-transparent font-mono text-sm text-white placeholder:text-non-text focus:outline-none"
+          className="flex-1 bg-transparent font-mono text-sm text-white placeholder:text-muted"
         />
         {inputVal && (
           <button
             type="button"
             onClick={() => handleInputChange("")}
-            className="text-non-text transition-fast hover:text-white"
+            className="text-muted transition-fast hover:text-white"
             aria-label="Clear search"
           >
             <X size={16} />
@@ -211,7 +211,7 @@ export function SearchView() {
                             loading="lazy"
                           />
                         ) : (
-                          <Music size={16} className="text-non-text" />
+                          <Music size={16} className="text-muted" />
                         )}
                       </div>
 
@@ -248,7 +248,7 @@ export function SearchView() {
                         ) : isDownloading ? (
                           <button
                             onClick={() => void cancelActiveDownload(item.id)}
-                            className="flex items-center gap-1 border border-non-text/40 px-2 py-1 font-sans text-xs text-muted hover:text-crimson transition-fast"
+                            className="flex items-center gap-1 border border-non-text/40 px-2 py-1 font-sans text-xs text-muted hover:text-bright-red transition-fast"
                             title="Cancel download"
                           >
                             <X size={12} />
@@ -257,7 +257,7 @@ export function SearchView() {
                         ) : (
                           <button
                             onClick={() => void triggerDownload(item)}
-                            className="flex items-center gap-1 bg-crimson px-2.5 py-1 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+                            className="flex items-center gap-1 bg-crimson px-2.5 py-1 font-sans text-xs text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
                             title={isError ? "Retry download" : "Download as MP3"}
                           >
                             <Download size={12} />

@@ -48,7 +48,7 @@ export function PlayerHud() {
       <div className="hud-corners-bottom" aria-hidden="true" />
 
       {/* Left: Track Info & Cover */}
-      <div className="flex w-72 shrink-0 items-center gap-3">
+      <div className="flex w-40 lg:w-56 xl:w-72 shrink-0 items-center gap-3">
         <CoverArt
           coverPath={currentTrack?.cover_path ?? null}
           size="md"
@@ -89,6 +89,7 @@ export function PlayerHud() {
 
           {/* Previous Button */}
           <button
+            disabled={!currentTrack}
             onClick={() => void previous()}
             aria-label="Previous track"
             className="text-muted transition-fast hover:text-white"
@@ -98,9 +99,10 @@ export function PlayerHud() {
 
           {/* Play / Pause Button */}
           <button
+            disabled={!currentTrack}
             onClick={() => void togglePlay()}
             aria-label={isPlaying ? "Pause" : "Play"}
-            className="flex h-8 w-8 items-center justify-center bg-crimson text-white transition-fast hover:bg-bright-red"
+            className="flex h-8 w-8 items-center justify-center bg-crimson text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
           >
             {isPlaying ? (
               <Pause size={16} fill="currentColor" />
@@ -111,6 +113,7 @@ export function PlayerHud() {
 
           {/* Next Button */}
           <button
+            disabled={!currentTrack}
             onClick={() => void next()}
             aria-label="Next track"
             className="text-muted transition-fast hover:text-white"
@@ -136,7 +139,7 @@ export function PlayerHud() {
       </div>
 
       {/* Right: EQ Button + Volume Dial + Terminal Log */}
-      <div className="flex w-72 shrink-0 items-center justify-end gap-3">
+      <div className="flex w-40 lg:w-56 xl:w-72 shrink-0 items-center justify-end gap-3">
         {/* EQ Modal Trigger */}
         <button
           onClick={() => setIsEqOpen(!isEqOpen)}

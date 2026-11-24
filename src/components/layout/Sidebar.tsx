@@ -46,7 +46,7 @@ export function Sidebar() {
               aria-current={isActive ? "page" : undefined}
               className={`flex items-center gap-3 px-3 py-2 text-sm font-sans transition-fast text-left ${
                 isActive
-                  ? "text-bright-red bg-white/5"
+                  ? "text-bright-red font-bold bg-white/5"
                   : "text-muted hover:text-white hover:bg-white/5"
               }`}
             >
@@ -60,7 +60,7 @@ export function Sidebar() {
       {/* Playlist shortcuts */}
       {playlists.length > 0 && (
         <div className="mt-6 flex flex-col gap-0.5 px-2">
-          <p className="px-3 pb-1 font-sans text-[10px] font-medium uppercase tracking-wider text-non-text">
+          <p className="px-3 pb-1 font-sans text-[10px] font-medium uppercase tracking-wider text-muted">
             Playlists
           </p>
           {playlists.slice(0, 8).map((p) => (
@@ -79,7 +79,7 @@ export function Sidebar() {
       )}
 
       <div className="mt-auto px-5 pb-2">
-        <p className="font-mono text-[10px] text-non-text">v0.1.0</p>
+        <p className="font-sans text-xs text-muted">v0.1.0</p>
       </div>
     </aside>
   );

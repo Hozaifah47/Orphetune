@@ -5,8 +5,8 @@ import type { LogEntry } from "@/stores";
 const LEVEL_COLORS: Record<LogEntry["level"], string> = {
   INFO: "text-muted",
   FETCH: "text-bright-red",
-  WARN: "text-yellow-500",
-  ERR: "text-crimson",
+  WARN: "text-white",
+  ERR: "text-bright-red",
 };
 
 const MAX_VISIBLE = 6;

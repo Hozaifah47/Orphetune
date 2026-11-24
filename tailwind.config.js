@@ -33,6 +33,7 @@ export default {
   plugins: [
     function ({ addUtilities }) {
       const cornerSize = "var(--hud-corner-size, 12px)";
+      const thickness = "var(--hud-corner-thickness, 1px)";
       const cornerColor = "var(--hud-corner-color, #8A5A5A)";
 
       const makeCorner = (position) => {
@@ -49,7 +50,7 @@ export default {
           width: cornerSize,
           height: cornerSize,
           backgroundImage: `${gradientH}, ${gradientV}`,
-          backgroundSize: `${cornerSize} 1px, 1px ${cornerSize}`,
+          backgroundSize: `${cornerSize} ${thickness}, ${thickness} ${cornerSize}`,
           backgroundPosition: `${isLeft ? "left" : "right"} ${isTop ? "top" : "bottom"}, ${isLeft ? "left" : "right"} ${isTop ? "top" : "bottom"}`,
           backgroundRepeat: "no-repeat",
           pointerEvents: "none",

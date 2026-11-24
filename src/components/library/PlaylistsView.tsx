@@ -83,7 +83,7 @@ export function PlaylistsView() {
                 const first = selectedPlaylistTracks[0];
                 if (first) void playTrack(first, selectedPlaylistTracks);
               }}
-              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
             >
               <Play size={14} fill="currentColor" />
               <span>Play playlist</span>
@@ -119,7 +119,7 @@ export function PlaylistsView() {
             if (e.key === "Enter") void handleCreate();
           }}
           placeholder="New playlist name..."
-          className="flex-1 border-b border-non-text/30 bg-transparent py-1 font-mono text-sm text-white placeholder:text-non-text focus:border-crimson focus:outline-none"
+          className="flex-1 border-b border-non-text/30 bg-transparent py-1 font-mono text-sm text-white placeholder:text-muted focus:border-crimson"
         />
         <button
           onClick={() => void handleCreate()}
@@ -134,7 +134,7 @@ export function PlaylistsView() {
       {playlists.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-2">
-            <ListMusic size={48} className="text-non-text" />
+            <ListMusic size={48} className="text-muted" />
             <p className="font-sans text-sm text-muted">No playlists yet</p>
           </div>
         </div>
@@ -156,7 +156,7 @@ export function PlaylistsView() {
                   }}
                   onBlur={() => void handleRename(playlist)}
                   autoFocus
-                  className="flex-1 bg-transparent font-sans text-sm text-white focus:outline-none"
+                  className="flex-1 bg-transparent font-sans text-sm text-white"
                 />
               ) : (
                 <button
@@ -172,14 +172,14 @@ export function PlaylistsView() {
                   setEditingId(playlist.id);
                   setEditName(playlist.name);
                 }}
-                className="text-non-text transition-fast hover:text-muted"
+                className="text-muted transition-fast hover:text-muted"
                 aria-label={`Rename ${playlist.name}`}
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={() => void deletePlaylist(playlist.id)}
-                className="text-non-text transition-fast hover:text-crimson"
+                className="text-muted transition-fast hover:text-bright-red"
                 aria-label={`Delete ${playlist.name}`}
               >
                 <Trash2 size={14} />

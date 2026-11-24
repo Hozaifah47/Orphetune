@@ -10,7 +10,7 @@ interface CoverArtProps {
 const SIZES = {
   sm: "h-10 w-10",
   md: "h-14 w-14",
-  lg: "h-40 w-40",
+  lg: "aspect-square w-full max-w-40",
 } as const;
 
 const ICON_SIZES = {
@@ -41,7 +41,7 @@ export function CoverArt({
           loading="lazy"
         />
       ) : (
-        <Music size={iconSize} className="text-non-text" />
+        <Music size={iconSize} className="text-muted" />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, RotateCcw } from "lucide-react";
 import { usePlayerStore } from "@/stores/playerStore";
 
@@ -64,6 +64,7 @@ function EqBand({ label, frequency, value, onChange }: EqBandProps) {
 }
 
 export function EqModal() {
+  const reduceMotion = useReducedMotion();
   const isEqOpen = usePlayerStore((s) => s.isEqOpen);
   const setIsEqOpen = usePlayerStore((s) => s.setIsEqOpen);
   const eq = usePlayerStore((s) => s.eq);
@@ -115,9 +116,7 @@ export function EqModal() {
       window.addEventListener("keydown", handleKeyDown);
 
       // Focus first element in modal
-      setTimeout(() => {
-        modalRef.current?.querySelector<HTMLElement>("button, input")?.focus();
-      }, 20);
+      modalRef.current?.querySelector<HTMLElement>("button, input")?.focus();
     } else {
       window.removeEventListener("keydown", handleKeyDown);
       previousActiveElement.current?.focus();
@@ -140,7 +139,7 @@ export function EqModal() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: reduceMotion ? 0 : 0.15 }}
             className="hud-corners hud-corners-active relative w-full max-w-md bg-bg-dark border border-non-text/30 p-6 shadow-none"
           >
             <div className="hud-corners-bottom" aria-hidden="true" />
@@ -151,7 +150,7 @@ export function EqModal() {
                 <h3 id="eq-title" className="font-sans text-base font-semibold text-white">
                   Equalizer
                 </h3>
-                <p className="font-mono text-[11px] text-muted">3-Band Geometric EQ (-12 to +12 dB)</p>
+                <p className="font-sans text-xs text-muted">Adjust each band from −12 to +12 dB</p>
               </div>
               <button
                 onClick={() => setIsEqOpen(false)}
@@ -196,7 +195,7 @@ export function EqModal() {
 
               <button
                 onClick={() => setIsEqOpen(false)}
-                className="bg-crimson px-4 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+                className="bg-crimson px-4 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
               >
                 Done
               </button>

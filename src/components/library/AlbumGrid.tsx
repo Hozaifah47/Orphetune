@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo } from "react";
+import { useRef, useCallback, useMemo, useState, useLayoutEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { CoverArt } from "./CoverArt";
 import type { Album } from "@/stores";
@@ -8,13 +8,23 @@ interface AlbumGridProps {
   onAlbumClick?: (album: Album) => void;
 }
 
-const COLUMN_COUNT = 5;
+
 const ITEM_HEIGHT = 220;
 const GAP = 16;
 
 export function AlbumGrid({ albums, onAlbumClick }: AlbumGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const rowCount = Math.ceil(albums.length / COLUMN_COUNT);
+  const [columns, setColumns] = useState(1);
+  useLayoutEffect(() => {
+    const container = parentRef.current;
+    if (!container) return;
+    const measure = () => setColumns(Math.max(1, Math.floor(container.clientWidth / 184)));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+  const rowCount = Math.ceil(albums.length / columns);
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -35,14 +45,15 @@ export function AlbumGrid({ albums, onAlbumClick }: AlbumGridProps) {
   const gridContent = useMemo(
     () =>
       virtualItems.map((virtualRow) => {
-        const startIdx = virtualRow.index * COLUMN_COUNT;
-        const rowAlbums = albums.slice(startIdx, startIdx + COLUMN_COUNT);
+        const startIdx = virtualRow.index * columns;
+        const rowAlbums = albums.slice(startIdx, startIdx + columns);
 
         return (
           <div
             key={virtualRow.key}
-            className="absolute left-0 right-0 flex gap-4 px-2"
+            className="absolute left-0 right-0 grid gap-4 px-2"
             style={{
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
               top: `${String(virtualRow.start)}px`,
               height: `${String(ITEM_HEIGHT)}px`,
             }}
@@ -51,7 +62,7 @@ export function AlbumGrid({ albums, onAlbumClick }: AlbumGridProps) {
               <button
                 key={album.key}
                 onClick={() => onAlbumClick?.(album)}
-                className="group flex w-1/5 flex-col gap-2 text-left transition-fast hover:bg-white/5 p-2"
+                className="group flex min-w-0 flex-col gap-2 text-left transition-fast hover:bg-white/5 p-2"
               >
                 <CoverArt coverPath={album.coverPath} size="lg" />
                 <div className="min-w-0">
@@ -61,7 +72,7 @@ export function AlbumGrid({ albums, onAlbumClick }: AlbumGridProps) {
                   <p className="truncate font-sans text-xs text-muted">
                     {album.artist}
                   </p>
-                  <p className="font-mono text-[10px] text-non-text">
+                  <p className="font-mono text-[10px] text-muted">
                     {String(album.trackIds.length)} tracks ·{" "}
                     {formatDuration(album.totalDurationMs)}
                   </p>
@@ -71,7 +82,7 @@ export function AlbumGrid({ albums, onAlbumClick }: AlbumGridProps) {
           </div>
         );
       }),
-    [virtualItems, albums, onAlbumClick, formatDuration],
+    [virtualItems, columns, albums, onAlbumClick, formatDuration],
   );
 
   return (

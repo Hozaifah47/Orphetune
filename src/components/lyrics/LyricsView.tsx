@@ -71,7 +71,7 @@ export function LyricsView() {
   useEffect(() => {
     if (activeIndex >= 0 && lineRefs.current[activeIndex]) {
       lineRefs.current[activeIndex]?.scrollIntoView({
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "center",
       });
     }
@@ -109,7 +109,7 @@ export function LyricsView() {
             aria-label="Refresh lyrics"
             title="Refetch lyrics from LRCLIB"
           >
-            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            <RefreshCw size={14} />
             <span className="font-sans text-xs">Refetch</span>
           </button>
         )}
@@ -122,7 +122,7 @@ export function LyricsView() {
       >
         {!currentTrack ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3">
-            <Mic2 size={40} className="text-non-text" />
+            <Mic2 size={40} className="text-muted" />
             <p className="font-sans text-sm text-muted">
               Play a track to view lyrics
             </p>
@@ -137,14 +137,14 @@ export function LyricsView() {
           <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <span className="font-mono text-xs text-muted">[INFO] Instrumental</span>
-              <p className="font-sans text-xs text-non-text">This track has no vocal lyrics</p>
+              <p className="font-sans text-xs text-muted">This track has no vocal lyrics</p>
             </div>
           </div>
         ) : notFound ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <span className="font-mono text-xs text-muted">[INFO] No lyrics found</span>
-              <p className="font-sans text-xs text-non-text">
+              <p className="font-sans text-xs text-muted">
                 LRCLIB has no lyrics for this track
               </p>
             </div>
@@ -171,7 +171,7 @@ export function LyricsView() {
                   className={`group flex items-start gap-3 cursor-pointer select-none transition-fast ${
                     isActive
                       ? "text-bright-red font-semibold scale-[1.02] origin-left"
-                      : "text-muted/60 hover:text-white"
+                      : "text-muted hover:text-white"
                   }`}
                   role="button"
                   tabIndex={0}

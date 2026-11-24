@@ -112,7 +112,7 @@ export function TrackList({
                   onClick={() =>
                     setActiveMenuTrackId(isMenuOpen ? null : track.id)
                   }
-                  className="p-1 text-non-text transition-fast hover:text-white"
+                  className="p-1 text-muted transition-fast hover:text-white"
                   title="Add to playlist"
                   aria-label={`Add ${track.title} to playlist`}
                 >
@@ -122,7 +122,7 @@ export function TrackList({
                 {isMenuOpen && (
                   <div className="hud-corners hud-corners-active absolute right-0 top-full z-30 mt-1 min-w-[140px] border border-non-text/40 bg-bg-dark py-1 shadow-none">
                     <div className="hud-corners-bottom" aria-hidden="true" />
-                    <p className="px-3 py-1 font-sans text-[10px] font-semibold text-non-text uppercase tracking-wider">
+                    <p className="px-3 py-1 font-sans text-[10px] font-semibold text-muted uppercase tracking-wider">
                       Add to Playlist
                     </p>
                     {playlists.map((pl) => (
@@ -143,7 +143,7 @@ export function TrackList({
             {showRemove && onRemove && (
               <button
                 onClick={() => onRemove(track)}
-                className="shrink-0 font-sans text-xs text-non-text hover:text-crimson transition-fast"
+                className="shrink-0 font-sans text-xs text-muted hover:text-bright-red transition-fast"
                 aria-label={`Remove ${track.title}`}
               >
                 Remove
