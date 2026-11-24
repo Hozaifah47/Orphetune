@@ -144,3 +144,7 @@ Rust now owns the canonical root chosen in its native picker and restores a sepa
 ### Scan completion and SQLite writes
 
 Each group of up to 50 metadata records now uses one parameterized insert with unique-path conflict handling. Scan completion waits for queued writes before refreshing library state. Concurrent initialization shares one database load. Metadata failures are excluded from the imported count. The frontend builds and its existing tests pass. Large-library throughput remains unmeasured.
+
+### Sidecar invocation
+
+yt-dlp and FFmpeg now resolve alongside the installed executable. Removed executable lookup in the working directory and PATH. Searches are length-bounded. Download processes ignore user configuration, disable overwrite, inherit stderr to avoid a full unread pipe, and register cancellation until the operation ends. Strict Clippy passed. Codec portability, signed sidecar provenance and cancellation of descendant processes remain open.

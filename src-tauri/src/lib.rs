@@ -67,7 +67,7 @@ fn get_migrations() -> Vec<Migration> {
 pub fn run() {
     tauri::Builder::default()
         .manage(library_access::LibraryAccess::default())
-        .manage(sidecar::DownloadManager::new())
+        .manage(sidecar::DownloadManager::default())
         .setup(|app| {
             if let Err(error) = library_access::restore(app.handle()) {
                 eprintln!("Library authorization could not be restored: {error}");

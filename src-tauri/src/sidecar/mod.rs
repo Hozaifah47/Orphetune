@@ -32,27 +32,25 @@ pub enum DownloadEvent {
 }
 
 /// Active download cancel handles
+#[derive(Default)]
 pub struct DownloadManager {
     cancels: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 impl DownloadManager {
-    pub fn new() -> Self {
-        Self {
-            cancels: Mutex::new(HashMap::new()),
-        }
-    }
-
-    pub fn register(&self, id: &str) -> Arc<AtomicBool> {
+    pub fn register(&self, id: &str) -> Result<Arc<AtomicBool>, String> {
         let flag = Arc::new(AtomicBool::new(false));
         let mut map = self.cancels.lock().unwrap();
+        if map.contains_key(id) {
+            return Err("Download already active.".into());
+        }
         map.insert(id.to_string(), Arc::clone(&flag));
-        flag
+        Ok(flag)
     }
 
     pub fn cancel(&self, id: &str) -> bool {
-        let mut map = self.cancels.lock().unwrap();
-        if let Some(flag) = map.remove(id) {
+        let map = self.cancels.lock().unwrap();
+        if let Some(flag) = map.get(id) {
             flag.store(true, Ordering::SeqCst);
             true
         } else {
@@ -66,87 +64,33 @@ impl DownloadManager {
     }
 }
 
+struct Registration<'a> {
+    manager: &'a DownloadManager,
+    id: &'a str,
+}
+impl Drop for Registration<'_> {
+    fn drop(&mut self) {
+        self.manager.unregister(self.id);
+    }
+}
+
 /// Resolve paths to sidecar binaries: yt-dlp and ffmpeg
-pub fn resolve_sidecar_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
-    let target = target_triple();
-    let ext = if cfg!(windows) { ".exe" } else { "" };
-    let filename = format!("{}-{}{}", name, target, ext);
-
-    // 1. Check beside binary or in binaries/
-    if let Ok(res_dir) = app.path().resource_dir() {
-        let p = res_dir.join("binaries").join(&filename);
-        if p.exists() {
-            return Ok(p);
-        }
+fn resolve_sidecar_path(name: &str) -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let bin = exe
+        .parent()
+        .ok_or("Application directory unavailable")?
+        .join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+    if bin.is_file() {
+        Ok(bin)
+    } else {
+        Err(format!("Bundled {name} is missing."))
     }
-
-    // 2. Check current working dir src-tauri/binaries/
-    let dev_path = PathBuf::from("src-tauri/binaries").join(&filename);
-    if dev_path.exists() {
-        return Ok(dev_path);
-    }
-
-    let bin_path = PathBuf::from("binaries").join(&filename);
-    if bin_path.exists() {
-        return Ok(bin_path);
-    }
-
-    // 3. Fallback: try relative to executable
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(parent) = current_exe.parent() {
-            let p = parent.join(&filename);
-            if p.exists() {
-                return Ok(p);
-            }
-            let p2 = parent.join("binaries").join(&filename);
-            if p2.exists() {
-                return Ok(p2);
-            }
-        }
-    }
-
-    // 4. Fallback to system PATH
-    if let Some(path) = find_in_path(name) {
-        return Ok(path);
-    }
-
-    Err(format!(
-        "Sidecar {} not found. Expected in src-tauri/binaries/{}",
-        name, filename
-    ))
-}
-
-fn find_in_path(name: &str) -> Option<PathBuf> {
-    if let Ok(path_var) = std::env::var("PATH") {
-        for dir in std::env::split_paths(&path_var) {
-            let p = dir.join(name);
-            if p.is_file() {
-                return Some(p);
-            }
-        }
-    }
-    None
-}
-
-fn target_triple() -> &'static str {
-    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    return "x86_64-unknown-linux-gnu";
-    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-    return "aarch64-unknown-linux-gnu";
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    return "x86_64-apple-darwin";
-    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-    return "aarch64-apple-darwin";
-    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-    return "x86_64-pc-windows-msvc";
-
-    #[allow(unreachable_code)]
-    "unknown"
 }
 
 /// Get yt-dlp version string
-pub async fn get_ytdlp_version(app: &tauri::AppHandle) -> Result<String, String> {
-    let ytdlp_path = resolve_sidecar_path(app, "yt-dlp")?;
+pub async fn get_ytdlp_version(_app: &tauri::AppHandle) -> Result<String, String> {
+    let ytdlp_path = resolve_sidecar_path("yt-dlp")?;
     let output = Command::new(&ytdlp_path)
         .arg("--version")
         .output()
@@ -163,14 +107,23 @@ pub async fn get_ytdlp_version(app: &tauri::AppHandle) -> Result<String, String>
 
 /// Search web tracks using yt-dlp --dump-json --flat-playlist
 pub async fn search_web(
-    app: &tauri::AppHandle,
+    _app: &tauri::AppHandle,
     query: &str,
 ) -> Result<Vec<WebSearchResult>, String> {
-    let ytdlp_path = resolve_sidecar_path(app, "yt-dlp")?;
+    let ytdlp_path = resolve_sidecar_path("yt-dlp")?;
+    if query.trim().is_empty() || query.len() > 512 {
+        return Err("Enter a search up to 512 bytes.".into());
+    }
     let search_arg = format!("ytsearch10:{}", query);
 
     let output = Command::new(&ytdlp_path)
-        .args(&[&search_arg, "--flat-playlist", "--dump-json"])
+        .args([
+            "--ignore-config",
+            "--flat-playlist",
+            "--dump-json",
+            "--",
+            &search_arg,
+        ])
         .output()
         .await
         .map_err(|e| format!("Search process failed: {}", e))?;
@@ -239,11 +192,15 @@ pub async fn download_track(
     {
         return Err("Invalid video identifier.".into());
     }
-    let ytdlp_path = resolve_sidecar_path(&app, "yt-dlp")?;
-    let ffmpeg_path = resolve_sidecar_path(&app, "ffmpeg")?;
+    let ytdlp_path = resolve_sidecar_path("yt-dlp")?;
+    let ffmpeg_path = resolve_sidecar_path("ffmpeg")?;
 
     let dm = app.state::<DownloadManager>();
-    let cancel_flag = dm.register(&video_id);
+    let cancel_flag = dm.register(&video_id)?;
+    let _registration = Registration {
+        manager: &dm,
+        id: &video_id,
+    };
 
     let _ = on_event.send(DownloadEvent::Log {
         level: "FETCH".into(),
@@ -256,7 +213,10 @@ pub async fn download_track(
     let video_url = format!("https://www.youtube.com/watch?v={}", video_id);
 
     let mut cmd = Command::new(&ytdlp_path);
-    cmd.args(&[
+    cmd.kill_on_drop(true).args([
+        "--ignore-config",
+        "--no-overwrites",
+        "--no-playlist",
         "-x",
         "--audio-format",
         "mp3",
@@ -275,7 +235,7 @@ pub async fn download_track(
     ]);
 
     cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::inherit());
 
     let mut child = cmd
         .spawn()
@@ -284,6 +244,7 @@ pub async fn download_track(
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let mut reader = BufReader::new(stdout).lines();
 
+    let mut cancellation = tokio::time::interval(std::time::Duration::from_millis(200));
     loop {
         tokio::select! {
             line_res = reader.next_line() => {
@@ -314,10 +275,9 @@ pub async fn download_track(
                     }
                 }
             }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => {
+            _ = cancellation.tick() => {
                 if cancel_flag.load(Ordering::SeqCst) {
                     let _ = child.kill().await;
-                    dm.unregister(&video_id);
                     let _ = on_event.send(DownloadEvent::Log {
                         level: "WARN".into(),
                         message: format!("Download cancelled for video {}", video_id),
@@ -332,7 +292,6 @@ pub async fn download_track(
         .wait()
         .await
         .map_err(|e| format!("Failed waiting for yt-dlp child: {}", e))?;
-    dm.unregister(&video_id);
 
     if !status.success() {
         let msg = format!("Download failed with status: {:?}", status.code());
