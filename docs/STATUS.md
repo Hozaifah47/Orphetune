@@ -128,3 +128,7 @@ Evidence is scoped to each observation. Runtime behavior requires the indicated 
 ## Verification procedure
 
 Run npm test, npm run build, then cargo fmt --check, cargo check, cargo test and cargo clippy --all-targets -- -D warnings in src-tauri. Launch npm run tauri dev with fresh XDG config, cache and data directories. Open Library, Search, Playlists and Lyrics. Open EQ by keyboard, adjust a band, Escape, confirm focus returns. Scan a disposable directory with MP3, FLAC, WAV, Unicode paths, a corrupt file and an external symlink. Compare rows before and after a rescan and restart. Play each valid file and listen while changing EQ, seek and volume. Disconnect networking and repeat local playback and search. Exercise download cancellation only with authorized media. Test each platform from its installed bundle before release.
+
+### Startup repair
+
+The SQL plugin now receives its database URL in an array. A new isolated Linux profile created orphetune.db and reached the startup sidecar version check. This clears the reproduced plugin panic. The runtime also emitted a GStreamer plugin-scanner warning. Audio output still requires verification.

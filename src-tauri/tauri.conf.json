@@ -41,9 +41,7 @@
   },
   "plugins": {
     "sql": {
-      "preload": {
-        "db": "sqlite:orphetune.db"
-      }
+      "preload": ["sqlite:orphetune.db"]
     }
   }
 }
