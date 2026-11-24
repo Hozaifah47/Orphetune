@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Pencil, ListMusic, ArrowLeft } from "lucide-react";
-import { usePlaylistStore } from "@/stores";
+import { Plus, Trash2, Pencil, ListMusic, ArrowLeft, Play } from "lucide-react";
+import { usePlaylistStore, usePlayerStore } from "@/stores";
 import { TrackList } from "./TrackList";
 import type { PlaylistRow } from "@/services/db";
 
 export function PlaylistsView() {
+  const playTrack = usePlayerStore((s) => s.playTrack);
   const {
     playlists,
     selectedPlaylistId,
@@ -59,25 +60,43 @@ export function PlaylistsView() {
     const playlist = playlists.find((p) => p.id === selectedPlaylistId);
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4">
-          <button
-            onClick={() => void selectPlaylist(null)}
-            className="text-muted transition-fast hover:text-white"
-            aria-label="Back to playlists"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <h2 className="font-sans text-lg font-semibold text-white">
-            {playlist?.name ?? "Playlist"}
-          </h2>
-          <span className="font-mono text-xs text-muted">
-            {String(selectedPlaylistTracks.length)} tracks
-          </span>
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => void selectPlaylist(null)}
+              className="text-muted transition-fast hover:text-white"
+              aria-label="Back to playlists"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h2 className="font-sans text-lg font-semibold text-white">
+              {playlist?.name ?? "Playlist"}
+            </h2>
+            <span className="font-mono text-xs text-muted">
+              {String(selectedPlaylistTracks.length)} tracks
+            </span>
+          </div>
+
+          {selectedPlaylistTracks.length > 0 && (
+            <button
+              onClick={() => {
+                const first = selectedPlaylistTracks[0];
+                if (first) void playTrack(first, selectedPlaylistTracks);
+              }}
+              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+            >
+              <Play size={14} fill="currentColor" />
+              <span>Play playlist</span>
+            </button>
+          )}
         </div>
         <TrackList
           tracks={selectedPlaylistTracks}
           showRemove
           onRemove={(track) => void handleRemoveTrack(track.id)}
+          onTrackClick={(track) => {
+            void playTrack(track, selectedPlaylistTracks);
+          }}
         />
       </div>
     );

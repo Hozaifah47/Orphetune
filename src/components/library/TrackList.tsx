@@ -1,5 +1,6 @@
 import { useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { usePlayerStore } from "@/stores/playerStore";
 import { CoverArt } from "./CoverArt";
 import type { TrackRow } from "@/services/db";
 
@@ -29,6 +30,8 @@ export function TrackList({
   onRemove,
   showRemove = false,
 }: TrackListProps) {
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -46,6 +49,7 @@ export function TrackList({
         const track = tracks[virtualRow.index];
         if (!track) return null;
 
+        const isCurrent = currentTrack?.id === track.id;
         const displayName = truncateMiddle(
           `${track.artist}/${track.album}/${track.title}`,
           60,
@@ -54,7 +58,9 @@ export function TrackList({
         return (
           <div
             key={virtualRow.key}
-            className="absolute left-0 right-0 flex items-center gap-3 px-4 hover:bg-white/5 transition-fast"
+            className={`absolute left-0 right-0 flex items-center gap-3 px-4 transition-fast ${
+              isCurrent ? "bg-white/10" : "hover:bg-white/5"
+            }`}
             style={{
               top: `${String(virtualRow.start)}px`,
               height: `${String(virtualRow.size)}px`,
@@ -64,8 +70,16 @@ export function TrackList({
               className="flex flex-1 items-center gap-3 text-left min-w-0"
               onClick={() => onTrackClick?.(track, virtualRow.index)}
             >
-              <CoverArt coverPath={track.cover_path} size="sm" />
-              <span className="flex-1 truncate font-mono text-sm text-white">
+              <CoverArt
+                coverPath={track.cover_path}
+                size="sm"
+                active={isCurrent && isPlaying}
+              />
+              <span
+                className={`flex-1 truncate font-mono text-sm ${
+                  isCurrent ? "text-bright-red font-semibold" : "text-white"
+                }`}
+              >
                 {displayName}
               </span>
               <span className="shrink-0 font-mono text-xs text-muted">

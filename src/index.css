@@ -77,6 +77,27 @@
     background: #d32f2f;
     color: #ffffff;
   }
+
+  /* Range input for EQ sliders (no border-radius, sharp rectangular thumb) */
+  input[type="range"].eq-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 6px;
+    background: #d32f2f;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+
+  input[type="range"].eq-slider::-moz-range-thumb {
+    width: 20px;
+    height: 6px;
+    background: #d32f2f;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
 }
 
 @layer components {

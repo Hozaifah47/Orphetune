@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { FolderOpen, RefreshCw, ArrowLeft } from "lucide-react";
-import { useLibraryStore } from "@/stores";
+import { FolderOpen, RefreshCw, ArrowLeft, Play } from "lucide-react";
+import { useLibraryStore, usePlayerStore } from "@/stores";
 import { TerminalLog } from "@/components/hud/TerminalLog";
 import { AlbumGrid } from "./AlbumGrid";
 import { TrackList } from "./TrackList";
@@ -20,6 +20,7 @@ export function LibraryView() {
     rescan,
   } = useLibraryStore();
 
+  const playTrack = usePlayerStore((s) => s.playTrack);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
@@ -62,24 +63,44 @@ export function LibraryView() {
   if (selectedAlbum) {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4">
-          <button
-            onClick={handleBack}
-            className="text-muted transition-fast hover:text-white"
-            aria-label="Back to albums"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h2 className="font-sans text-lg font-semibold text-white">
-              {selectedAlbum.name}
-            </h2>
-            <p className="font-sans text-xs text-muted">
-              {selectedAlbum.artist}
-            </p>
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBack}
+              className="text-muted transition-fast hover:text-white"
+              aria-label="Back to albums"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <h2 className="font-sans text-lg font-semibold text-white">
+                {selectedAlbum.name}
+              </h2>
+              <p className="font-sans text-xs text-muted">
+                {selectedAlbum.artist}
+              </p>
+            </div>
           </div>
+
+          {albumTracks.length > 0 && (
+            <button
+              onClick={() => {
+                const first = albumTracks[0];
+                if (first) void playTrack(first, albumTracks);
+              }}
+              className="flex items-center gap-2 bg-crimson px-3 py-1.5 font-sans text-xs text-white transition-fast hover:bg-bright-red"
+            >
+              <Play size={14} fill="currentColor" />
+              <span>Play album</span>
+            </button>
+          )}
         </div>
-        <TrackList tracks={albumTracks} />
+        <TrackList
+          tracks={albumTracks}
+          onTrackClick={(track) => {
+            void playTrack(track, albumTracks);
+          }}
+        />
       </div>
     );
   }
