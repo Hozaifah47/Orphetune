@@ -7,3 +7,8 @@ src-tauri/binaries/*
 *.swo
 .DS_Store
 Thumbs.db
+
+# Prompt files
+prompt.txt
+*.prompt.txt
+
