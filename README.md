@@ -12,20 +12,9 @@ src-tauri/binaries/yt-dlp-<target-triple>[.exe]
 src-tauri/binaries/ffmpeg-<target-triple>[.exe]
 ```
 
-### Automatic Update via Script
+### Install or update
 
-To update the pinned versions:
-
-1. Open `scripts/fetch-sidecars`.
-2. Update the `YTDLP_VERSION` variable to the desired release tag from [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases), for example:
-   ```bash
-   YTDLP_VERSION="2025.02.19"
-   ```
-3. Run the script:
-   ```bash
-   ./scripts/fetch-sidecars
-   ```
-4. The script detects your host target triple, fetches the corresponding standalone binary, sets executable permissions, and places it in `src-tauri/binaries/`.
+Run `bash scripts/fetch-sidecars` in the repository root. The script verifies yt-dlp against the platform-specific SHA-256 digest from its pinned release and atomically replaces stale copies. Maintainers updating the pin must update the release tag and all four asset digests together. FFmpeg currently comes from the host installation. A distributable FFmpeg build and its licensing notices require separate verification on each target.
 
 ### Manual Update
 
@@ -46,10 +35,10 @@ Sidecar binaries are ignored in version control (`.gitignore` covers `src-tauri/
 
 ```bash
 # Install frontend dependencies
-npm install
+npm ci
 
 # Fetch sidecar binaries for host architecture
-./scripts/fetch-sidecars
+bash scripts/fetch-sidecars
 
 # Run in development mode
 npm run tauri dev
@@ -59,3 +48,8 @@ npx tsc --noEmit
 npm run build
 cd src-tauri && cargo check
 ```
+
+
+## Downloading music
+
+In Search, enter a title, choose Search Web, and select Download on a result you have permission to save. Choose a music library folder when prompted. The row reports transfer progress and MP3 processing, then shows the file path and an Open Downloads button. The Downloads playlist is also available from Playlists after restarting. A failed transfer shows its error on the result and can be retried.

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Pinned versions
-YTDLP_VERSION="2025.02.19"
-FFMPEG_RELEASE="6.1.1"
+YTDLP_VERSION="2026.11.23"
+
 
 # Determine root and binaries dir
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -55,46 +55,29 @@ fi
 YTDLP_DEST="${BIN_DIR}/yt-dlp-${TARGET_TRIPLE}${EXT}"
 FFMPEG_DEST="${BIN_DIR}/ffmpeg-${TARGET_TRIPLE}${EXT}"
 
-# 1. Fetch or link yt-dlp
-if [ -f "${YTDLP_DEST}" ]; then
-    echo "[INFO] yt-dlp sidecar already exists at ${YTDLP_DEST}"
-else
-    echo "[INFO] Fetching pinned yt-dlp v${YTDLP_VERSION}..."
-    YTDLP_URL=""
-    case "${TARGET_TRIPLE}" in
-        x86_64-unknown-linux-gnu)
-            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux"
-            ;;
-        aarch64-unknown-linux-gnu)
-            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux_aarch64"
-            ;;
-        *apple-darwin*)
-            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_macos"
-            ;;
-        *windows*)
-            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp.exe"
-            ;;
-    esac
+case "${TARGET_TRIPLE}" in
+    x86_64-unknown-linux-gnu) asset=yt-dlp_linux; digest=249ddb058234276bc449b9cd9492aad9f133bda5923c61a9e39983ae114ef17d ;;
+    aarch64-unknown-linux-gnu) asset=yt-dlp_linux_aarch64; digest=fb847a2e4a9ddc8cf5fcfb4bb7f42ba8969ecf72068def0278074f9d300bd13c ;;
+    *apple-darwin) asset=yt-dlp_macos; digest=57654854886d0398a798895aadf5173e2749fbb5e249b9f3728022ab376e11fb ;;
+    x86_64-pc-windows-*) asset=yt-dlp.exe; digest=622ed48023cac1daa52a3bf3a6ac38f03514de214b5f0fa069389fd0f6d17e5c ;;
+    *) echo "Unsupported target: ${TARGET_TRIPLE}" >&2; exit 1 ;;
+esac
 
-    DOWNLOADED=false
-    if [ -n "${YTDLP_URL}" ]; then
-        if curl -sSL -f -o "${YTDLP_DEST}" "${YTDLP_URL}" 2>/dev/null; then
-            chmod +x "${YTDLP_DEST}"
-            DOWNLOADED=true
-            echo "[INFO] Successfully downloaded yt-dlp to ${YTDLP_DEST}"
-        fi
+checksum() {
+    if command -v sha256sum >/dev/null; then
+        sha256sum "$1" | cut -d ' ' -f 1
+    else
+        shasum -a 256 "$1" | cut -d ' ' -f 1
     fi
+}
 
-    if [ "${DOWNLOADED}" = false ]; then
-        if command -v yt-dlp >/dev/null 2>&1; then
-            echo "[WARN] Could not download yt-dlp; copying system yt-dlp from $(which yt-dlp)"
-            cp "$(which yt-dlp)" "${YTDLP_DEST}"
-            chmod +x "${YTDLP_DEST}"
-        else
-            echo "[ERR] Failed to fetch yt-dlp and no system binary found."
-            exit 1
-        fi
-    fi
+if [[ ! -f "$YTDLP_DEST" ]] || [[ "$(checksum "$YTDLP_DEST")" != "$digest" ]]; then
+    temp="$(mktemp "$BIN_DIR/.yt-dlp.XXXXXXXX")"
+    trap 'rm -f "$temp"' EXIT
+    curl --fail --location --retry 2 --max-time 180         "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/${asset}" -o "$temp"
+    [[ "$(checksum "$temp")" == "$digest" ]] || { echo "yt-dlp checksum mismatch" >&2; exit 1; }
+    chmod 755 "$temp"
+    mv -f "$temp" "$YTDLP_DEST"
 fi
 
 # 2. Fetch or link ffmpeg
