@@ -361,3 +361,35 @@ fn urlencoding_encode(s: &str) -> String {
     }
     result
 }
+
+#[tauri::command]
+pub async fn get_ytdlp_version(app: tauri::AppHandle) -> Result<String, String> {
+    crate::sidecar::get_ytdlp_version(&app).await
+}
+
+#[tauri::command]
+pub async fn search_web_tracks(
+    app: tauri::AppHandle,
+    query: String,
+) -> Result<Vec<crate::sidecar::WebSearchResult>, String> {
+    crate::sidecar::search_web(&app, &query).await
+}
+
+#[tauri::command]
+pub async fn download_track(
+    app: tauri::AppHandle,
+    video_id: String,
+    dest_dir: String,
+    on_event: Channel<crate::sidecar::DownloadEvent>,
+) -> Result<ScannedTrack, String> {
+    crate::sidecar::download_track(app, video_id, dest_dir, on_event).await
+}
+
+#[tauri::command]
+pub async fn cancel_download(
+    app: tauri::AppHandle,
+    video_id: String,
+) -> Result<bool, String> {
+    let dm = app.state::<crate::sidecar::DownloadManager>();
+    Ok(dm.cancel(&video_id))
+}

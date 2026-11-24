@@ -7,3 +7,6 @@ export type { Album } from "./libraryStore";
 export { usePlaylistStore } from "./playlistStore";
 export { usePlayerStore } from "./playerStore";
 export type { RepeatMode } from "./playerStore";
+export { useSearchStore } from "./searchStore";
+export type { DownloadStatus } from "./searchStore";
+export type { WebSearchResult } from "@/services";

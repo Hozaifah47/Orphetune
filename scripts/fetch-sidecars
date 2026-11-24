@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pinned versions
+YTDLP_VERSION="2025.02.19"
+FFMPEG_RELEASE="6.1.1"
+
+# Determine root and binaries dir
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BIN_DIR="${ROOT_DIR}/src-tauri/binaries"
+mkdir -p "${BIN_DIR}"
+
+# Detect target triple
+if command -v rustc >/dev/null 2>&1; then
+    TARGET_TRIPLE="$(rustc -vV | sed -n 's|host: ||p')"
+elif [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+    TARGET_TRIPLE="$(rustc -vV | sed -n 's|host: ||p')"
+else
+    # Fallback detection
+    ARCH="$(uname -m)"
+    OS="$(uname -s)"
+    case "${OS}" in
+        Linux*)
+            case "${ARCH}" in
+                x86_64) TARGET_TRIPLE="x86_64-unknown-linux-gnu" ;;
+                aarch64) TARGET_TRIPLE="aarch64-unknown-linux-gnu" ;;
+                *) echo "Unsupported Linux arch: ${ARCH}"; exit 1 ;;
+            esac
+            ;;
+        Darwin*)
+            case "${ARCH}" in
+                x86_64) TARGET_TRIPLE="x86_64-apple-darwin" ;;
+                arm64) TARGET_TRIPLE="aarch64-apple-darwin" ;;
+                *) echo "Unsupported Darwin arch: ${ARCH}"; exit 1 ;;
+            esac
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            TARGET_TRIPLE="x86_64-pc-windows-msvc"
+            ;;
+        *)
+            echo "Unknown OS: ${OS}"; exit 1
+            ;;
+    esac
+fi
+
+echo "[INFO] Target triple detected: ${TARGET_TRIPLE}"
+
+EXT=""
+if [[ "${TARGET_TRIPLE}" == *"windows"* ]]; then
+    EXT=".exe"
+fi
+
+YTDLP_DEST="${BIN_DIR}/yt-dlp-${TARGET_TRIPLE}${EXT}"
+FFMPEG_DEST="${BIN_DIR}/ffmpeg-${TARGET_TRIPLE}${EXT}"
+
+# 1. Fetch or link yt-dlp
+if [ -f "${YTDLP_DEST}" ]; then
+    echo "[INFO] yt-dlp sidecar already exists at ${YTDLP_DEST}"
+else
+    echo "[INFO] Fetching pinned yt-dlp v${YTDLP_VERSION}..."
+    YTDLP_URL=""
+    case "${TARGET_TRIPLE}" in
+        x86_64-unknown-linux-gnu)
+            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux"
+            ;;
+        aarch64-unknown-linux-gnu)
+            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_linux_aarch64"
+            ;;
+        *apple-darwin*)
+            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_macos"
+            ;;
+        *windows*)
+            YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp.exe"
+            ;;
+    esac
+
+    DOWNLOADED=false
+    if [ -n "${YTDLP_URL}" ]; then
+        if curl -sSL -f -o "${YTDLP_DEST}" "${YTDLP_URL}" 2>/dev/null; then
+            chmod +x "${YTDLP_DEST}"
+            DOWNLOADED=true
+            echo "[INFO] Successfully downloaded yt-dlp to ${YTDLP_DEST}"
+        fi
+    fi
+
+    if [ "${DOWNLOADED}" = false ]; then
+        if command -v yt-dlp >/dev/null 2>&1; then
+            echo "[WARN] Could not download yt-dlp; copying system yt-dlp from $(which yt-dlp)"
+            cp "$(which yt-dlp)" "${YTDLP_DEST}"
+            chmod +x "${YTDLP_DEST}"
+        else
+            echo "[ERR] Failed to fetch yt-dlp and no system binary found."
+            exit 1
+        fi
+    fi
+fi
+
+# 2. Fetch or link ffmpeg
+if [ -f "${FFMPEG_DEST}" ]; then
+    echo "[INFO] ffmpeg sidecar already exists at ${FFMPEG_DEST}"
+else
+    echo "[INFO] Setting up ffmpeg sidecar..."
+    if command -v ffmpeg >/dev/null 2>&1; then
+        echo "[INFO] Copying host ffmpeg from $(which ffmpeg) to ${FFMPEG_DEST}"
+        cp "$(which ffmpeg)" "${FFMPEG_DEST}"
+        chmod +x "${FFMPEG_DEST}"
+    else
+        echo "[ERR] ffmpeg not found on host. Please install ffmpeg or place ffmpeg-${TARGET_TRIPLE}${EXT} in src-tauri/binaries/."
+        exit 1
+    fi
+fi
+
+echo "[INFO] Sidecars ready:"
+ls -lh "${BIN_DIR}"

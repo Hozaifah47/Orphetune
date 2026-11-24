@@ -7,9 +7,15 @@
     "core:default",
     "dialog:default",
     "dialog:allow-open",
-    "shell:default",
     "sql:default",
     "sql:allow-execute",
-    "sql:allow-select"
+    "sql:allow-select",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "binaries/yt-dlp", "sidecar": true },
+        { "name": "binaries/ffmpeg", "sidecar": true }
+      ]
+    }
   ]
 }

@@ -17,5 +17,21 @@ export {
   getSetting,
   setSetting,
 } from "./db";
-export type { ScannedTrack, ScanEventData, CoverResult } from "./tauriCommands";
-export { scanLibrary, scanFile, fetchCoverArt } from "./tauriCommands";
+export type {
+  ScannedTrack,
+  ScanEventData,
+  CoverResult,
+  WebSearchResult,
+  DownloadEventData,
+} from "./tauriCommands";
+export {
+  scanLibrary,
+  scanFile,
+  fetchCoverArt,
+  getYtdlpVersion,
+  searchWebTracks,
+  downloadTrack,
+  cancelDownload,
+} from "./tauriCommands";
+export { audioEngine } from "./audioEngine";
+export type { EqSettings } from "./audioEngine";

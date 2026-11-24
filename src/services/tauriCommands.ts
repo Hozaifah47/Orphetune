@@ -36,6 +36,22 @@ export interface CoverResult {
   coverPath: string | null;
 }
 
+// ─── Web Search & Download Events ───────────────────────────────────
+
+export interface WebSearchResult {
+  id: string;
+  title: string;
+  uploader: string;
+  duration: number;
+  thumbnail: string | null;
+}
+
+export type DownloadEventData =
+  | { event: "Log"; data: { level: string; message: string } }
+  | { event: "Progress"; data: { percent: number } }
+  | { event: "Complete"; data: { track: ScannedTrack } }
+  | { event: "Error"; data: { message: string } };
+
 // ─── Commands ────────────────────────────────────────────────────────
 
 export async function scanLibrary(
@@ -68,4 +84,32 @@ export async function fetchCoverArt(
     album,
     onEvent: channel,
   });
+}
+
+export async function getYtdlpVersion(): Promise<string> {
+  return invoke<string>("get_ytdlp_version");
+}
+
+export async function searchWebTracks(
+  query: string,
+): Promise<WebSearchResult[]> {
+  return invoke<WebSearchResult[]>("search_web_tracks", { query });
+}
+
+export async function downloadTrack(
+  videoId: string,
+  destDir: string,
+  onEvent: (event: DownloadEventData) => void,
+): Promise<ScannedTrack> {
+  const channel = new Channel<DownloadEventData>();
+  channel.onmessage = onEvent;
+  return invoke<ScannedTrack>("download_track", {
+    videoId,
+    destDir,
+    onEvent: channel,
+  });
+}
+
+export async function cancelDownload(videoId: string): Promise<boolean> {
+  return invoke<boolean>("cancel_download", { videoId });
 }

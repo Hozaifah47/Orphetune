@@ -65,6 +65,17 @@ fn get_migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(sidecar::DownloadManager::new())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                match sidecar::get_ytdlp_version(&handle).await {
+                    Ok(ver) => println!("[INFO] yt-dlp version: {}", ver),
+                    Err(err) => eprintln!("[WARN] yt-dlp version check: {}", err),
+                }
+            });
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(
@@ -76,6 +87,10 @@ pub fn run() {
             commands::scan_library,
             commands::scan_file,
             commands::fetch_cover_art,
+            commands::get_ytdlp_version,
+            commands::search_web_tracks,
+            commands::download_track,
+            commands::cancel_download,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Orphetune");
