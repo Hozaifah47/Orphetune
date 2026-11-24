@@ -38,7 +38,7 @@ export function Scrubber() {
   const barRef = useRef<HTMLDivElement>(null);
 
   const handleSeekFromEvent = useCallback(
-    (e: MouseEvent | TouchEvent) => {
+    (e: MouseEvent | TouchEvent | PointerEvent) => {
       if (!barRef.current || duration <= 0) return;
       const rect = barRef.current.getBoundingClientRect();
       const clientX = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
@@ -52,7 +52,7 @@ export function Scrubber() {
     e.preventDefault();
     handleSeekFromEvent(e.nativeEvent);
 
-    const onPointerMove = (ev: MouseEvent) => {
+    const onPointerMove = (ev: PointerEvent) => {
       handleSeekFromEvent(ev);
     };
 

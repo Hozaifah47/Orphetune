@@ -18,7 +18,7 @@ export function VolumeDial() {
   const [isDragging, setIsDragging] = useState(false);
 
   // Calculate volume from pointer position relative to dial center
-  const calculateVolumeFromEvent = useCallback((e: MouseEvent | TouchEvent) => {
+  const calculateVolumeFromEvent = useCallback((e: MouseEvent | TouchEvent | PointerEvent) => {
     if (!dialRef.current) return;
     const rect = dialRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -52,7 +52,7 @@ export function VolumeDial() {
     setIsDragging(true);
     calculateVolumeFromEvent(e.nativeEvent);
 
-    const onPointerMove = (ev: MouseEvent) => {
+    const onPointerMove = (ev: PointerEvent) => {
       calculateVolumeFromEvent(ev);
     };
 

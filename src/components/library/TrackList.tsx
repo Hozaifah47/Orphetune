@@ -1,6 +1,7 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { usePlayerStore } from "@/stores/playerStore";
+import { Plus, Check } from "lucide-react";
+import { usePlayerStore, usePlaylistStore, useLogStore } from "@/stores";
 import { CoverArt } from "./CoverArt";
 import type { TrackRow } from "@/services/db";
 
@@ -32,6 +33,13 @@ export function TrackList({
 }: TrackListProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const addTrack = usePlaylistStore((s) => s.addTrack);
+
+  const [activeMenuTrackId, setActiveMenuTrackId] = useState<number | null>(null);
+  const [addedNotice, setAddedNotice] = useState<string | null>(null);
+
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -43,6 +51,14 @@ export function TrackList({
 
   const virtualItems = rowVirtualizer.getVirtualItems();
 
+  const handleAddToPlaylist = async (playlistId: number, playlistName: string, track: TrackRow) => {
+    await addTrack(playlistId, track.id);
+    useLogStore.getState().addEntry("INFO", `Added "${track.title}" to "${playlistName}"`);
+    setActiveMenuTrackId(null);
+    setAddedNotice(`Added to ${playlistName}`);
+    setTimeout(() => setAddedNotice(null), 1800);
+  };
+
   const listContent = useMemo(
     () =>
       virtualItems.map((virtualRow) => {
@@ -52,8 +68,10 @@ export function TrackList({
         const isCurrent = currentTrack?.id === track.id;
         const displayName = truncateMiddle(
           `${track.artist}/${track.album}/${track.title}`,
-          60,
+          55,
         );
+
+        const isMenuOpen = activeMenuTrackId === track.id;
 
         return (
           <div
@@ -86,6 +104,42 @@ export function TrackList({
                 {formatDuration(track.duration_ms)}
               </span>
             </button>
+
+            {/* Add to Playlist button / dropdown */}
+            {!showRemove && playlists.length > 0 && (
+              <div className="relative shrink-0">
+                <button
+                  onClick={() =>
+                    setActiveMenuTrackId(isMenuOpen ? null : track.id)
+                  }
+                  className="p-1 text-non-text transition-fast hover:text-white"
+                  title="Add to playlist"
+                  aria-label={`Add ${track.title} to playlist`}
+                >
+                  <Plus size={14} />
+                </button>
+
+                {isMenuOpen && (
+                  <div className="hud-corners hud-corners-active absolute right-0 top-full z-30 mt-1 min-w-[140px] border border-non-text/40 bg-bg-dark py-1 shadow-none">
+                    <div className="hud-corners-bottom" aria-hidden="true" />
+                    <p className="px-3 py-1 font-sans text-[10px] font-semibold text-non-text uppercase tracking-wider">
+                      Add to Playlist
+                    </p>
+                    {playlists.map((pl) => (
+                      <button
+                        key={pl.id}
+                        onClick={() => void handleAddToPlaylist(pl.id, pl.name, track)}
+                        className="w-full truncate px-3 py-1 text-left font-sans text-xs text-muted transition-fast hover:bg-white/10 hover:text-white"
+                      >
+                        {pl.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Remove from playlist button */}
             {showRemove && onRemove && (
               <button
                 onClick={() => onRemove(track)}
@@ -98,7 +152,7 @@ export function TrackList({
           </div>
         );
       }),
-    [virtualItems, tracks, onTrackClick, onRemove, showRemove],
+    [virtualItems, tracks, onTrackClick, onRemove, showRemove, currentTrack, isPlaying, playlists, activeMenuTrackId],
   );
 
   if (tracks.length === 0) {
@@ -110,7 +164,13 @@ export function TrackList({
   }
 
   return (
-    <div ref={parentRef} className="flex-1 overflow-auto">
+    <div ref={parentRef} className="relative flex-1 overflow-auto">
+      {addedNotice && (
+        <div className="sticky top-2 z-40 mx-auto flex w-fit items-center gap-1.5 border border-bright-red bg-bg-dark px-3 py-1 font-mono text-xs text-bright-red">
+          <Check size={12} />
+          <span>{addedNotice}</span>
+        </div>
+      )}
       <div
         className="relative w-full"
         style={{ height: `${String(rowVirtualizer.getTotalSize())}px` }}
