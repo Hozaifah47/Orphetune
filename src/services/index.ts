@@ -1,5 +1,5 @@
 export { getDb } from "./db";
-export type { TrackRow, PlaylistRow } from "./db";
+export type { TrackRow, PlaylistRow, LyricsRow } from "./db";
 export {
   upsertTrack,
   getAllTracks,
@@ -16,6 +16,8 @@ export {
   reorderPlaylistTracks,
   getSetting,
   setSetting,
+  getCachedLyrics,
+  saveLyrics,
 } from "./db";
 export type {
   ScannedTrack,
@@ -23,6 +25,7 @@ export type {
   CoverResult,
   WebSearchResult,
   DownloadEventData,
+  LyricsResult,
 } from "./tauriCommands";
 export {
   scanLibrary,
@@ -32,6 +35,9 @@ export {
   searchWebTracks,
   downloadTrack,
   cancelDownload,
+  fetchLyrics,
 } from "./tauriCommands";
 export { audioEngine } from "./audioEngine";
 export type { EqSettings } from "./audioEngine";
+export { parseLrc, findActiveLyricIndex } from "./lrcParser";
+export type { LrcLine, ParsedLyrics } from "./lrcParser";

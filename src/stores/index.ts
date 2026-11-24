@@ -10,3 +10,4 @@ export type { RepeatMode } from "./playerStore";
 export { useSearchStore } from "./searchStore";
 export type { DownloadStatus } from "./searchStore";
 export type { WebSearchResult } from "@/services";
+export { useLyricsStore } from "./lyricsStore";

@@ -52,6 +52,14 @@ export type DownloadEventData =
   | { event: "Complete"; data: { track: ScannedTrack } }
   | { event: "Error"; data: { message: string } };
 
+// ─── Lyrics Result ──────────────────────────────────────────────────
+
+export interface LyricsResult {
+  synced: string | null;
+  plain: string | null;
+  instrumental: boolean;
+}
+
 // ─── Commands ────────────────────────────────────────────────────────
 
 export async function scanLibrary(
@@ -112,4 +120,18 @@ export async function downloadTrack(
 
 export async function cancelDownload(videoId: string): Promise<boolean> {
   return invoke<boolean>("cancel_download", { videoId });
+}
+
+export async function fetchLyrics(
+  artist: string,
+  title: string,
+  album: string,
+  durationS: number,
+): Promise<LyricsResult> {
+  return invoke<LyricsResult>("fetch_lyrics", {
+    artist,
+    title,
+    album,
+    durationS,
+  });
 }

@@ -393,3 +393,13 @@ pub async fn cancel_download(
     let dm = app.state::<crate::sidecar::DownloadManager>();
     Ok(dm.cancel(&video_id))
 }
+
+#[tauri::command]
+pub async fn fetch_lyrics(
+    artist: String,
+    title: String,
+    album: String,
+    duration_s: f64,
+) -> Result<crate::lyrics::LyricsResult, String> {
+    crate::lyrics::fetch_lyrics(&artist, &title, &album, duration_s).await
+}

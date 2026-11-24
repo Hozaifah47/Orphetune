@@ -220,3 +220,45 @@ export async function setSetting(key: string, value: string): Promise<void> {
     [key, value],
   );
 }
+
+// ─── Lyrics Cache ────────────────────────────────────────────────────
+
+export interface LyricsRow {
+  track_id: number;
+  synced: string | null;
+  plain: string | null;
+  instrumental: number;
+  fetched_at: number;
+}
+
+export async function getCachedLyrics(
+  trackId: number,
+): Promise<LyricsRow | null> {
+  const d = await getDb();
+  const rows = await d.select<LyricsRow[]>(
+    "SELECT * FROM lyrics_cache WHERE track_id = $1",
+    [trackId],
+  );
+  return rows[0] ?? null;
+}
+
+export async function saveLyrics(
+  trackId: number,
+  data: {
+    synced: string | null;
+    plain: string | null;
+    instrumental: boolean;
+  },
+): Promise<void> {
+  const d = await getDb();
+  await d.execute(
+    `INSERT INTO lyrics_cache (track_id, synced, plain, instrumental, fetched_at)
+     VALUES ($1, $2, $3, $4, unixepoch())
+     ON CONFLICT(track_id) DO UPDATE SET
+       synced = excluded.synced,
+       plain = excluded.plain,
+       instrumental = excluded.instrumental,
+       fetched_at = unixepoch()`,
+    [trackId, data.synced, data.plain, data.instrumental ? 1 : 0],
+  );
+}
