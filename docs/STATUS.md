@@ -140,3 +140,7 @@ D6 now specifies the user-requested ouroboros. Its inner arc follows the 270-deg
 ### Library authorization
 
 Rust now owns the canonical root chosen in its native picker and restores a separate grant on startup. Existing users select their folder once. Replacing a grant prompts for a restart because Tauri's built-in streaming scope accumulates grants for a process lifetime. SQLite catalog and playlist records are preserved. Static asset access is limited to cached covers. Frontend shell execution, frontend file-picker grants and drag-and-drop grants were removed. Scan and download commands validate the root and individual tracks. The native test accepts a Unicode uppercase WAV and rejects a sibling MP3, a text file and an external symlink. Cargo check, rustfmt, one Rust test, 12 frontend tests and the frontend build passed. Native picker, restart and packaged streaming acceptance still need a round trip.
+
+### Scan completion and SQLite writes
+
+Each group of up to 50 metadata records now uses one parameterized insert with unique-path conflict handling. Scan completion waits for queued writes before refreshing library state. Concurrent initialization shares one database load. Metadata failures are excluded from the imported count. The frontend builds and its existing tests pass. Large-library throughput remains unmeasured.

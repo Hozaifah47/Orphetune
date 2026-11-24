@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   getAllTracks,
   getKnownFiles,
-  upsertTrack,
+  upsertTracks,
   getSetting,
   setSetting,
   searchTracks,
@@ -112,9 +112,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             );
             break;
           case "Tracks":
-            for (const t of evt.data.tracks) {
-              await upsertTrack(t);
-            }
+            await upsertTracks(evt.data.tracks);
             break;
           case "Progress":
             set({ scanProgress: evt.data });
@@ -133,8 +131,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } catch (e) {
       addLog("ERR", `Scan failed: ${String(e)}`);
     } finally {
-      await get().loadTracks();
-      set({ isScanning: false, scanProgress: null });
+      try {
+        await get().loadTracks();
+      } catch (error) {
+        addLog("ERR", `Library refresh failed: ${String(error)}`);
+      } finally {
+        set({ isScanning: false, scanProgress: null });
+      }
     }
   },
 

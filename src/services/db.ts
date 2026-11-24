@@ -1,11 +1,14 @@
 import Database from "@tauri-apps/plugin-sql";
 
-let db: Database | null = null;
+import type { ScannedTrack } from "./tauriCommands";
 
-export async function getDb(): Promise<Database> {
-  if (!db) {
-    db = await Database.load("sqlite:orphetune.db");
-  }
+let db: Promise<Database> | null = null;
+
+export function getDb(): Promise<Database> {
+  db ??= Database.load("sqlite:orphetune.db").catch((error: unknown) => {
+    db = null;
+    throw error;
+  });
   return db;
 }
 
@@ -25,22 +28,21 @@ export interface TrackRow {
   cover_path: string | null;
 }
 
-export async function upsertTrack(t: {
-  path: string;
-  mtime: number;
-  size: number;
-  title: string;
-  artist: string;
-  album: string;
-  trackNo: number | null;
-  durationMs: number;
-  format: string;
-  coverPath: string | null;
-}): Promise<void> {
+export function upsertTrack(track: ScannedTrack): Promise<void> {
+  return upsertTracks([track]);
+}
+
+export async function upsertTracks(tracks: ScannedTrack[]): Promise<void> {
+  if (tracks.length === 0) return;
+  const values = tracks.flatMap(t => [
+    t.path, t.mtime, t.size, t.title, t.artist, t.album,
+    t.trackNo, t.durationMs, t.format, t.coverPath,
+  ]);
+  const placeholders = tracks.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
   const d = await getDb();
   await d.execute(
     `INSERT INTO tracks (path, mtime, size, title, artist, album, track_no, duration_ms, format, cover_path)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ${placeholders}
      ON CONFLICT(path) DO UPDATE SET
        mtime = excluded.mtime,
        size = excluded.size,
@@ -51,18 +53,7 @@ export async function upsertTrack(t: {
        duration_ms = excluded.duration_ms,
        format = excluded.format,
        cover_path = COALESCE(excluded.cover_path, tracks.cover_path)`,
-    [
-      t.path,
-      t.mtime,
-      t.size,
-      t.title,
-      t.artist,
-      t.album,
-      t.trackNo,
-      t.durationMs,
-      t.format,
-      t.coverPath,
-    ],
+    values,
   );
 }
 

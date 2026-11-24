@@ -65,15 +65,19 @@ export interface LyricsResult {
 export async function scanLibrary(
   dir: string,
   knownFiles: KnownFileParam[],
-  onEvent: (event: ScanEventData) => void,
+  onEvent: (event: ScanEventData) => void | Promise<void>,
 ): Promise<void> {
   const channel = new Channel<ScanEventData>();
-  channel.onmessage = onEvent;
-  await invoke("scan_library", {
-    dir,
-    knownFiles,
-    onEvent: channel,
+  const ingested = new Promise<void>((resolve, reject) => {
+    let pending = Promise.resolve();
+    channel.onmessage = (event) => {
+      pending = pending.then(() => onEvent(event));
+      void pending.catch(reject);
+      if (event.event === "Complete") void pending.then(resolve, reject);
+    };
   });
+  await Promise.all([invoke("scan_library", { dir, knownFiles, onEvent: channel }), ingested]);
+
 }
 
 export async function scanFile(path: string): Promise<ScannedTrack> {

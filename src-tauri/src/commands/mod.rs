@@ -88,12 +88,14 @@ pub async fn scan_library(
 
         let total = files.len() as u32;
         let mut scanned: u32 = 0;
+        let mut imported = 0;
         let mut batch: Vec<ScannedTrack> = Vec::with_capacity(50);
 
         for file in &files {
             match extract_metadata(file, &covers_dir) {
                 Ok(track) => {
                     batch.push(track);
+                    imported += 1;
                 }
                 Err(e) => {
                     let _ = on_event_clone.send(ScanEvent::Log {
@@ -127,7 +129,7 @@ pub async fn scan_library(
 
         let _ = on_event_clone.send(ScanEvent::Complete {
             total,
-            new_tracks: scanned,
+            new_tracks: imported,
             skipped,
         });
 
