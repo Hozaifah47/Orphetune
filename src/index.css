@@ -1,0 +1,89 @@
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    color: #ffffff;
+    background: linear-gradient(180deg, #080202 0%, #110505 100%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Visible focus ring: 2px #FF3333, 2px offset */
+  *:focus-visible {
+    outline: 2px solid #ff3333;
+    outline-offset: 2px;
+  }
+
+  /* Remove default focus styles */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* prefers-reduced-motion: disable all transitions */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #8a5a5a;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b07a7a;
+  }
+
+  /* Selection */
+  ::selection {
+    background: #d32f2f;
+    color: #ffffff;
+  }
+}
+
+@layer components {
+  /* Transition utility that respects reduced-motion */
+  .transition-fast {
+    transition-property: color, background-color, border-color, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}

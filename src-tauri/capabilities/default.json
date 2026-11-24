@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/tauri-schema/refs/heads/main/tauri.schema.json",
+  "identifier": "default",
+  "description": "Default permissions for the app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "shell:default",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select"
+  ]
+}
