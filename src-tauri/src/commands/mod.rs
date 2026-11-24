@@ -47,20 +47,14 @@ pub async fn scan_library(
     known_files: Vec<KnownFile>,
     on_event: Channel<ScanEvent>,
 ) -> Result<(), String> {
-    let dir_clone = dir.clone();
-    let dir_path = Path::new(&dir_clone);
-    if !dir_path.is_dir() {
-        return Err(format!("Not a valid directory: {}", dir));
-    }
-
+    let dir = crate::library_access::authorize(&app, Path::new(&dir), true)?;
     // Prepare covers directory.
     let cache_dir = app
         .path()
         .app_cache_dir()
         .map_err(|e| format!("Cannot get cache dir: {}", e))?;
     let covers_dir = cache_dir.join("covers");
-    fs::create_dir_all(&covers_dir)
-        .map_err(|e| format!("Cannot create covers dir: {}", e))?;
+    fs::create_dir_all(&covers_dir).map_err(|e| format!("Cannot create covers dir: {}", e))?;
 
     let known_map: HashMap<String, (i64, i64)> = known_files
         .into_iter()
@@ -70,11 +64,11 @@ pub async fn scan_library(
     // Run the blocking scan on a dedicated thread.
     let on_event_clone = on_event.clone();
     tokio::task::spawn_blocking(move || {
-        let dir_path = Path::new(&dir);
+        let dir_path = dir.as_path();
 
         let _ = on_event_clone.send(ScanEvent::Log {
             level: "INFO".into(),
-            message: format!("Scanning {}", dir),
+            message: format!("Scanning {}", dir.display()),
         });
 
         // Walk directory.
@@ -89,11 +83,7 @@ pub async fn scan_library(
 
         let _ = on_event_clone.send(ScanEvent::Log {
             level: "INFO".into(),
-            message: format!(
-                "Found {} new files, {} unchanged",
-                files.len(),
-                skipped
-            ),
+            message: format!("Found {} new files, {} unchanged", files.len(), skipped),
         });
 
         let total = files.len() as u32;
@@ -127,9 +117,7 @@ pub async fn scan_library(
 
         // Flush remaining.
         if !batch.is_empty() {
-            let _ = on_event_clone.send(ScanEvent::Tracks {
-                tracks: batch,
-            });
+            let _ = on_event_clone.send(ScanEvent::Tracks { tracks: batch });
         }
 
         let _ = on_event_clone.send(ScanEvent::Progress {
@@ -155,25 +143,17 @@ pub async fn scan_library(
 }
 
 #[tauri::command]
-pub async fn scan_file(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<ScannedTrack, String> {
-    let file_path = Path::new(&path);
-    if !file_path.is_file() {
-        return Err(format!("Not a valid file: {}", path));
-    }
-
+pub async fn scan_file(app: tauri::AppHandle, path: String) -> Result<ScannedTrack, String> {
+    let authorized = crate::library_access::authorize(&app, Path::new(&path), false)?;
+    let file_path = authorized.as_path();
     let cache_dir = app
         .path()
         .app_cache_dir()
         .map_err(|e| format!("Cannot get cache dir: {}", e))?;
     let covers_dir = cache_dir.join("covers");
-    fs::create_dir_all(&covers_dir)
-        .map_err(|e| format!("Cannot create covers dir: {}", e))?;
+    fs::create_dir_all(&covers_dir).map_err(|e| format!("Cannot create covers dir: {}", e))?;
 
-    let metadata = fs::metadata(file_path)
-        .map_err(|e| format!("Cannot stat {}: {}", path, e))?;
+    let metadata = fs::metadata(file_path).map_err(|e| format!("Cannot stat {}: {}", path, e))?;
 
     let mtime = metadata
         .modified()
@@ -204,8 +184,7 @@ pub async fn fetch_cover_art(
         .app_cache_dir()
         .map_err(|e| format!("Cannot get cache dir: {}", e))?;
     let covers_dir = cache_dir.join("covers");
-    fs::create_dir_all(&covers_dir)
-        .map_err(|e| format!("Cannot create covers dir: {}", e))?;
+    fs::create_dir_all(&covers_dir).map_err(|e| format!("Cannot create covers dir: {}", e))?;
 
     let hash = {
         use std::collections::hash_map::DefaultHasher;
@@ -386,10 +365,7 @@ pub async fn download_track(
 }
 
 #[tauri::command]
-pub async fn cancel_download(
-    app: tauri::AppHandle,
-    video_id: String,
-) -> Result<bool, String> {
+pub async fn cancel_download(app: tauri::AppHandle, video_id: String) -> Result<bool, String> {
     let dm = app.state::<crate::sidecar::DownloadManager>();
     Ok(dm.cancel(&video_id))
 }

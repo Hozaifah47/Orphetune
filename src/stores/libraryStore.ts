@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import {
   getAllTracks,
   getKnownFiles,
@@ -73,7 +73,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return;
-    const path = await getSetting("library_path");
+    const path = await invoke<string | null>("current_library");
     const tracks = await getAllTracks();
     set({
       libraryPath: path,
@@ -81,15 +81,18 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       albums: groupAlbums(tracks),
       initialized: true,
     });
+    if (path && path !== await getSetting("library_path")) await get().startScan(path);
   },
 
   pickFolder: async () => {
-    const selected = await open({ directory: true, multiple: false });
-    if (!selected) return;
-    const dir = typeof selected === "string" ? selected : selected;
-    await setSetting("library_path", dir);
-    set({ libraryPath: dir });
-    await get().startScan(dir);
+    try {
+      const dir = await invoke<string | null>("choose_library");
+      if (!dir) return;
+      set({ libraryPath: dir });
+      await get().startScan(dir);
+    } catch (error) {
+      useLogStore.getState().addEntry("ERR", String(error));
+    }
   },
 
   startScan: async (dir: string) => {
@@ -126,6 +129,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       };
 
       await scanLibrary(dir, knownFiles, handleEvent);
+      await setSetting("library_path", dir);
     } catch (e) {
       addLog("ERR", `Scan failed: ${String(e)}`);
     } finally {

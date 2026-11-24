@@ -136,3 +136,7 @@ The SQL plugin now receives its database URL in an array. A new isolated Linux p
 ### Volume control
 
 D6 now specifies the user-requested ouroboros. Its inner arc follows the 270-degree input sweep. Chromium verified Home 0%, Arrow Up 5%, Page Up 15%, End 100%, a pointer press at twelve o’clock 50%, and wheel-down 45%. The 48-pixel control was screenshot-inspected. TypeScript, production build and 12 Vitest tests passed.
+
+### Library authorization
+
+Rust now owns the canonical root chosen in its native picker and restores a separate grant on startup. Existing users select their folder once. Replacing a grant prompts for a restart because Tauri's built-in streaming scope accumulates grants for a process lifetime. SQLite catalog and playlist records are preserved. Static asset access is limited to cached covers. Frontend shell execution, frontend file-picker grants and drag-and-drop grants were removed. Scan and download commands validate the root and individual tracks. The native test accepts a Unicode uppercase WAV and rejects a sibling MP3, a text file and an external symlink. Cargo check, rustfmt, one Rust test, 12 frontend tests and the frontend build passed. Native picker, restart and packaged streaming acceptance still need a round trip.

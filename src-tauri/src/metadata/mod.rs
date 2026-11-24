@@ -29,10 +29,7 @@ pub struct ScannedTrack {
 
 /// Extract metadata from a single discovered file.
 /// `covers_dir` is the directory where extracted covers are saved.
-pub fn extract_metadata(
-    file: &DiscoveredFile,
-    covers_dir: &Path,
-) -> Result<ScannedTrack, String> {
+pub fn extract_metadata(file: &DiscoveredFile, covers_dir: &Path) -> Result<ScannedTrack, String> {
     let path = &file.path;
     let path_str = path.to_string_lossy().to_string();
 
@@ -144,11 +141,20 @@ fn extract_cover(
 /// Look for cover.jpg, folder.jpg, front.jpg in the track's directory.
 fn find_folder_cover(track_path: &Path, covers_dir: &Path) -> Option<String> {
     let parent = track_path.parent()?;
-    let candidates = ["cover.jpg", "folder.jpg", "front.jpg", "cover.png", "folder.png"];
+    let candidates = [
+        "cover.jpg",
+        "folder.jpg",
+        "front.jpg",
+        "cover.png",
+        "folder.png",
+    ];
 
     for name in &candidates {
         let candidate = parent.join(name);
-        if candidate.exists() {
+        if candidate
+            .symlink_metadata()
+            .is_ok_and(|m| m.is_file() && m.len() <= 8 * 1024 * 1024)
+        {
             // Copy to covers dir with a hash based on the folder path.
             let hash = make_hash(&parent.to_string_lossy());
             let ext = if name.ends_with(".png") { "png" } else { "jpg" };

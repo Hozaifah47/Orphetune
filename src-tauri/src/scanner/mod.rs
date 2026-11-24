@@ -8,6 +8,16 @@ use walkdir::WalkDir;
 /// Audio extensions we accept (lowercase).
 const AUDIO_EXTENSIONS: &[&str] = &["mp3", "flac", "wav"];
 
+pub fn is_audio(path: &Path) -> bool {
+    path.extension()
+        .and_then(|s| s.to_str())
+        .is_some_and(|extension| {
+            AUDIO_EXTENSIONS
+                .iter()
+                .any(|allowed| extension.eq_ignore_ascii_case(allowed))
+        })
+}
+
 /// Represents a file the frontend already knows about.
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +45,11 @@ pub fn walk_library(
     let mut skipped: u32 = 0;
     let mut warnings: Vec<String> = Vec::new();
 
-    for entry in WalkDir::new(dir).follow_links(true).into_iter() {
+    for entry in WalkDir::new(dir)
+        .follow_links(false)
+        .follow_root_links(false)
+        .into_iter()
+    {
         let entry = match entry {
             Ok(e) => e,
             Err(e) => {
@@ -49,12 +63,7 @@ pub fn walk_library(
         }
 
         let path = entry.path();
-        let ext = match path.extension().and_then(|e| e.to_str()) {
-            Some(e) => e.to_lowercase(),
-            None => continue,
-        };
-
-        if !AUDIO_EXTENSIONS.contains(&ext.as_str()) {
+        if !is_audio(path) {
             continue;
         }
 

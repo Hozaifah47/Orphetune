@@ -18,7 +18,8 @@
         "minWidth": 900,
         "minHeight": 600,
         "decorations": true,
-        "resizable": true
+        "resizable": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -26,7 +27,9 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["**"],
+          "allow": [
+            "$APPCACHE/covers/*"
+          ],
           "deny": []
         }
       }
@@ -41,7 +44,9 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:orphetune.db"]
+      "preload": [
+        "sqlite:orphetune.db"
+      ]
     }
   }
 }

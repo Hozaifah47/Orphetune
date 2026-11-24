@@ -231,11 +231,14 @@ pub async fn download_track(
     dest_dir: String,
     on_event: Channel<DownloadEvent>,
 ) -> Result<ScannedTrack, String> {
-    let dest_path = PathBuf::from(&dest_dir);
-    if !dest_path.is_dir() {
-        return Err(format!("Destination directory does not exist: {}", dest_dir));
+    let dest_path = crate::library_access::authorize(&app, std::path::Path::new(&dest_dir), true)?;
+    if video_id.len() != 11
+        || !video_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+    {
+        return Err("Invalid video identifier.".into());
     }
-
     let ytdlp_path = resolve_sidecar_path(&app, "yt-dlp")?;
     let ffmpeg_path = resolve_sidecar_path(&app, "ffmpeg")?;
 
@@ -376,6 +379,7 @@ pub async fn download_track(
     let covers_dir = cache_dir.join("covers");
     let _ = std::fs::create_dir_all(&covers_dir);
 
+    let file_path = crate::library_access::authorize(&app, &file_path, false)?;
     let metadata = std::fs::metadata(&file_path)
         .map_err(|e| format!("Cannot stat {}: {}", file_path.display(), e))?;
 

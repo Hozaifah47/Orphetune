@@ -1,4 +1,5 @@
 pub mod commands;
+mod library_access;
 pub mod lyrics;
 pub mod metadata;
 pub mod scanner;
@@ -65,15 +66,12 @@ fn get_migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(library_access::LibraryAccess::default())
         .manage(sidecar::DownloadManager::new())
         .setup(|app| {
-            let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                match sidecar::get_ytdlp_version(&handle).await {
-                    Ok(ver) => println!("[INFO] yt-dlp version: {}", ver),
-                    Err(err) => eprintln!("[WARN] yt-dlp version check: {}", err),
-                }
-            });
+            if let Err(error) = library_access::restore(app.handle()) {
+                eprintln!("Library authorization could not be restored: {error}");
+            }
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
@@ -84,6 +82,8 @@ pub fn run() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            library_access::choose_library,
+            library_access::current_library,
             commands::scan_library,
             commands::scan_file,
             commands::fetch_cover_art,

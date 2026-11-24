@@ -42,7 +42,7 @@ export function LibraryView() {
   if (!initialized) return null;
 
   // No library path set yet.
-  if (!libraryPath && albums.length === 0) {
+  if (!libraryPath) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
         <FolderOpen size={48} className="text-non-text" />
