@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type View = "library" | "search" | "playlists" | "lyrics";
+export type View = "library" | "search" | "playlists" | "lyrics" | "queue";
 
 interface AppState {
   currentView: View;

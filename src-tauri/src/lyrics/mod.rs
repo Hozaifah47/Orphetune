@@ -29,6 +29,7 @@ pub async fn fetch_lyrics(
     duration_s: f64,
 ) -> Result<LyricsResult, String> {
     let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
         .user_agent(USER_AGENT)
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
@@ -47,18 +48,19 @@ pub async fn fetch_lyrics(
         req = req.query(&[("duration", &format!("{:.0}", duration_s))]);
     }
 
-    let resp = req.send().await;
-
-    if let Ok(res) = resp {
-        if res.status().is_success() {
-            if let Ok(data) = res.json::<LrclibResponse>().await {
-                return Ok(LyricsResult {
-                    synced: data.synced_lyrics,
-                    plain: data.plain_lyrics,
-                    instrumental: data.instrumental.unwrap_or(false),
-                });
-            }
-        }
+    let response = req.send().await.map_err(|e| e.to_string())?;
+    if response.status() != reqwest::StatusCode::NOT_FOUND {
+        let data = response
+            .error_for_status()
+            .map_err(|e| e.to_string())?
+            .json::<LrclibResponse>()
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(LyricsResult {
+            synced: data.synced_lyrics,
+            plain: data.plain_lyrics,
+            instrumental: data.instrumental.unwrap_or(false),
+        });
     }
 
     // 2. Fallback to GET /api/search
@@ -71,32 +73,34 @@ pub async fn fetch_lyrics(
         .await
         .map_err(|e| format!("LRCLIB search request failed: {}", e))?;
 
-    if search_res.status().is_success() {
-        if let Ok(items) = search_res.json::<Vec<LrclibResponse>>().await {
-            // Find closest duration match within 2.0 seconds
-            let mut closest: Option<LrclibResponse> = None;
-            let mut min_diff = f64::MAX;
+    let items = search_res
+        .error_for_status()
+        .map_err(|e| e.to_string())?
+        .json::<Vec<LrclibResponse>>()
+        .await
+        .map_err(|e| e.to_string())?;
+    // Find closest duration match within 2.0 seconds
+    let mut closest: Option<LrclibResponse> = None;
+    let mut min_diff = f64::MAX;
 
-            for item in items {
-                if let Some(dur) = item.duration {
-                    let diff = (dur - duration_s).abs();
-                    if diff <= 2.0 && diff < min_diff {
-                        min_diff = diff;
-                        closest = Some(item);
-                    }
-                } else if closest.is_none() {
-                    closest = Some(item);
-                }
+    for item in items {
+        if let Some(dur) = item.duration {
+            let diff = (dur - duration_s).abs();
+            if diff <= 2.0 && diff < min_diff {
+                min_diff = diff;
+                closest = Some(item);
             }
-
-            if let Some(best) = closest {
-                return Ok(LyricsResult {
-                    synced: best.synced_lyrics,
-                    plain: best.plain_lyrics,
-                    instrumental: best.instrumental.unwrap_or(false),
-                });
-            }
+        } else if closest.is_none() {
+            closest = Some(item);
         }
+    }
+
+    if let Some(best) = closest {
+        return Ok(LyricsResult {
+            synced: best.synced_lyrics,
+            plain: best.plain_lyrics,
+            instrumental: best.instrumental.unwrap_or(false),
+        });
     }
 
     // No match found

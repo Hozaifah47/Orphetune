@@ -231,13 +231,10 @@ pub async fn download_track(
         message: format!("Initiating download for video id: {}", video_id),
     });
 
-    // Output template: sanitized title or id
-    let out_template = dest_path.join("%(title).100s [%(id)s].%(ext)s");
-    let out_template_str = out_template.to_string_lossy().to_string();
     let video_url = format!("https://www.youtube.com/watch?v={}", video_id);
 
     let mut cmd = Command::new(&ytdlp_path);
-    cmd.kill_on_drop(true).args([
+    cmd.current_dir(&dest_path).kill_on_drop(true).args([
         "--ignore-config",
         "--no-overwrites",
         "--no-playlist",
@@ -260,7 +257,7 @@ pub async fn download_track(
         "--progress-template",
         "download:orphetune-progress:%(progress._percent_str)s",
         "-o",
-        &out_template_str,
+        "%(title).100s [%(id)s].%(ext)s",
         &video_url,
     ]);
 
@@ -370,7 +367,7 @@ pub async fn download_track(
     let covers_dir = cache_dir.join("covers");
     let _ = std::fs::create_dir_all(&covers_dir);
 
-    let file_path = crate::library_access::authorize(&app, &file_path, false)?;
+    let file_path = crate::library_access::authorize(&app, &dest_path.join(file_path), false)?;
     let metadata = std::fs::metadata(&file_path)
         .map_err(|e| format!("Cannot stat {}: {}", file_path.display(), e))?;
 

@@ -59,8 +59,9 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       set({ selectedPlaylistId: null, selectedPlaylistTracks: [] });
       return;
     }
+    set({ selectedPlaylistId: id, selectedPlaylistTracks: [] });
     const tracks = await getPlaylistTracks(id);
-    set({ selectedPlaylistId: id, selectedPlaylistTracks: tracks });
+    if (get().selectedPlaylistId === id) set({ selectedPlaylistTracks: tracks });
   },
 
   addTrack: async (playlistId: number, trackId: number) => {

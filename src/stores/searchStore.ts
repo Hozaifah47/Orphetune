@@ -52,7 +52,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     // Instant local results from SQLite
     try {
       const local = await searchTracks(trimmed);
-      set({ localResults: local });
+      if (get().query === query) set({ localResults: local });
     } catch (e) {
       useLogStore
         .getState()

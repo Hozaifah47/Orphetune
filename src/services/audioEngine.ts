@@ -32,6 +32,9 @@ class AudioEngine {
   private trebleNode: BiquadFilterNode | null = null;
   private gainNode: GainNode | null = null;
   private initialized = false;
+  private volume = 0.8;
+  private eq: EqSettings = { bass: 0, mid: 0, treble: 0 };
+  private sourceRevision = 0;
 
   private onErrorCallback: ((err: Error | MediaError | null) => void) | null = null;
   private onEndedCallback: (() => void) | null = null;
@@ -57,24 +60,24 @@ class AudioEngine {
     this.bassNode = this.audioCtx.createBiquadFilter();
     this.bassNode.type = "lowshelf";
     this.bassNode.frequency.value = 120;
-    this.bassNode.gain.value = 0;
+    this.bassNode.gain.value = this.eq.bass;
 
     // Mid: Peaking 1 kHz, Q 1
     this.midNode = this.audioCtx.createBiquadFilter();
     this.midNode.type = "peaking";
     this.midNode.frequency.value = 1000;
     this.midNode.Q.value = 1;
-    this.midNode.gain.value = 0;
+    this.midNode.gain.value = this.eq.mid;
 
     // Treble: Highshelf 8 kHz
     this.trebleNode = this.audioCtx.createBiquadFilter();
     this.trebleNode.type = "highshelf";
     this.trebleNode.frequency.value = 8000;
-    this.trebleNode.gain.value = 0;
+    this.trebleNode.gain.value = this.eq.treble;
 
     // Gain (Volume)
     this.gainNode = this.audioCtx.createGain();
-    this.gainNode.gain.value = 1.0;
+    this.gainNode.gain.value = this.volume;
 
     // Connect graph
     this.sourceNode
@@ -117,8 +120,9 @@ class AudioEngine {
   }
 
   public async loadAndPlay(src: string): Promise<void> {
+    const revision = ++this.sourceRevision;
     await this.ensureContext();
-    if (!this.audio) return;
+    if (!this.audio || revision !== this.sourceRevision) return;
     this.audio.src = src;
     await this.audio.play();
   }
@@ -131,6 +135,7 @@ class AudioEngine {
   }
 
   public pause(): void {
+    ++this.sourceRevision;
     if (this.audio) {
       this.audio.pause();
     }
@@ -144,23 +149,25 @@ class AudioEngine {
 
   public setVolume(volume: number): void {
     const clamped = Math.max(0, Math.min(1, volume));
+    this.volume = clamped;
     if (this.gainNode && this.audioCtx) {
-      this.gainNode.gain.setValueAtTime(clamped, this.audioCtx.currentTime);
+      this.gainNode.gain.setTargetAtTime(clamped, this.audioCtx.currentTime, 0.012);
     }
   }
 
   public setEq(band: "bass" | "mid" | "treble", gainDb: number): void {
     const clamped = Math.max(-12, Math.min(12, Math.round(gainDb * 2) / 2));
+    this.eq[band] = clamped;
     const now = this.audioCtx ? this.audioCtx.currentTime : 0;
     switch (band) {
       case "bass":
-        if (this.bassNode) this.bassNode.gain.setValueAtTime(clamped, now);
+        if (this.bassNode) this.bassNode.gain.setTargetAtTime(clamped, now, 0.012);
         break;
       case "mid":
-        if (this.midNode) this.midNode.gain.setValueAtTime(clamped, now);
+        if (this.midNode) this.midNode.gain.setTargetAtTime(clamped, now, 0.012);
         break;
       case "treble":
-        if (this.trebleNode) this.trebleNode.gain.setValueAtTime(clamped, now);
+        if (this.trebleNode) this.trebleNode.gain.setTargetAtTime(clamped, now, 0.012);
         break;
     }
   }

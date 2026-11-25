@@ -17,6 +17,7 @@ export function LyricsView() {
   const lyrics = useLyricsStore((s) => s.lyrics);
   const plainLyrics = useLyricsStore((s) => s.plainLyrics);
   const isInstrumental = useLyricsStore((s) => s.isInstrumental);
+  const error = useLyricsStore((s) => s.error);
   const notFound = useLyricsStore((s) => s.notFound);
   const isLoading = useLyricsStore((s) => s.isLoading);
   const loadLyricsForTrack = useLyricsStore((s) => s.loadLyricsForTrack);
@@ -103,7 +104,7 @@ export function LyricsView() {
 
         {currentTrack && (
           <button
-            onClick={() => void loadLyricsForTrack(currentTrack)}
+            onClick={() => void loadLyricsForTrack(currentTrack, true)}
             disabled={isLoading}
             className="flex items-center gap-1.5 text-muted transition-fast hover:text-white disabled:opacity-40"
             aria-label="Refresh lyrics"
@@ -140,6 +141,8 @@ export function LyricsView() {
               <p className="font-sans text-xs text-muted">This track has no vocal lyrics</p>
             </div>
           </div>
+        ) : error && !lyrics && !plainLyrics ? (
+          <p role="alert" className="m-auto text-sm text-muted">{error}</p>
         ) : notFound ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-2">

@@ -1,5 +1,7 @@
 pub mod commands;
 mod library_access;
+#[cfg(target_os = "linux")]
+mod linux_audio;
 pub mod lyrics;
 pub mod metadata;
 pub mod scanner;
@@ -74,7 +76,10 @@ fn get_migrations() -> Vec<Migration> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "linux")]
+    let builder = builder.manage(linux_audio::LinuxAudio::default());
+    builder
         .manage(library_access::LibraryAccess::default())
         .manage(sidecar::DownloadManager::default())
         .setup(|app| {
@@ -84,7 +89,6 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:orphetune.db", get_migrations())
@@ -93,6 +97,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             library_access::choose_library,
             library_access::current_library,
+            commands::playback_url,
             commands::scan_library,
             commands::scan_file,
             commands::fetch_cover_art,

@@ -118,7 +118,7 @@ fn extract_cover(
 
     if let Some(pic) = pic {
         let data = pic.data();
-        if !data.is_empty() {
+        if !data.is_empty() && data.len() <= 8 * 1024 * 1024 {
             let hash = make_hash(&format!("{}:{}", artist, album));
             let ext = mime_to_ext(pic.mime_type());
             let filename = format!("{}.{}", hash, ext);
@@ -142,8 +142,8 @@ fn extract_cover(
 fn find_folder_cover(track_path: &Path, covers_dir: &Path) -> Option<String> {
     let parent = track_path.parent()?;
     let candidates = [
-        "cover.jpg",
         "folder.jpg",
+        "cover.jpg",
         "front.jpg",
         "cover.png",
         "folder.png",

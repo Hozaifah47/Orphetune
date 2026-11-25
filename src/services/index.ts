@@ -6,7 +6,7 @@ export {
   getAllTracks,
   getKnownFiles,
   searchTracks,
-  updateTrackCover,
+  updateAlbumCover,
   getAllPlaylists,
   createPlaylist,
   renamePlaylist,

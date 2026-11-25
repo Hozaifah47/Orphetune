@@ -15,6 +15,8 @@ export function LibraryView() {
     scanProgress,
     libraryPath,
     initialized,
+    onlineArt,
+    setOnlineArt,
     init,
     pickFolder,
     rescan,
@@ -113,6 +115,10 @@ export function LibraryView() {
           Library
         </h2>
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={onlineArt} onChange={event => void setOnlineArt(event.target.checked)} />
+            Find covers online
+          </label>
           {isScanning && scanProgress && (
             <div className="flex items-center gap-2">
               <div className="h-1 w-24 bg-non-text/30">

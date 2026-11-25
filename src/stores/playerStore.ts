@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { audioEngine, type EqSettings } from "@/services/audioEngine";
 import { getSetting, setSetting, type TrackRow } from "@/services/db";
 import { useLogStore } from "./logStore";
@@ -23,6 +23,8 @@ interface PlayerState {
 
   initSettings: () => Promise<void>;
   playTrack: (track: TrackRow, newQueue?: TrackRow[]) => Promise<void>;
+  enqueue: (track: TrackRow) => void;
+  removeQueued: (track: TrackRow) => void;
   setQueue: (newQueue: TrackRow[], startIndex?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
   play: () => Promise<void>;
@@ -83,6 +85,30 @@ function updateMediaSession(track: TrackRow | null) {
   });
 }
 
+const pendingSettings = new Map<string, string>();
+let savingSettings = false;
+
+async function persistSetting(key: string, value: string): Promise<void> {
+  pendingSettings.set(key, value);
+  if (savingSettings) return;
+  savingSettings = true;
+  try {
+    for (const [name, latest] of pendingSettings) {
+      pendingSettings.delete(name);
+      try {
+        await setSetting(name, latest);
+      } catch (error) {
+        useLogStore.getState().addEntry("WARN", `Could not save player settings: ${String(error)}`);
+      }
+    }
+  } finally {
+    savingSettings = false;
+  }
+}
+
+let playbackRequest = 0;
+const failedPaths = new Set<string>();
+
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   queue: [],
   originalQueue: [],
@@ -107,7 +133,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const repStr = await getSetting("player_repeat");
       const eqStr = await getSetting("player_eq");
 
-      const volume = volStr !== null ? parseFloat(volStr) : 0.8;
+      const savedVolume = volStr === null ? NaN : Number(volStr);
+      const volume = Number.isFinite(savedVolume) ? Math.max(0, Math.min(1, savedVolume)) : 0.8;
       const shuffle = shufStr === "true";
       const repeat =
         repStr === "all" || repStr === "one" || repStr === "off"
@@ -187,77 +214,75 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   playTrack: async (track: TrackRow, newQueue?: TrackRow[]) => {
-    let queue = newQueue || get().queue;
-    let originalQueue = newQueue || get().originalQueue;
-
+    const request = ++playbackRequest;
+    audioEngine.pause();
+    if (newQueue) failedPaths.clear();
+    let {queue, originalQueue} = get();
     if (newQueue) {
-      originalQueue = [...newQueue];
-      if (get().shuffle) {
-        // Current track stays first, rest shuffled
-        const rest = newQueue.filter((t) => t.id !== track.id);
-        const shuffledRest = fisherYatesShuffle(rest);
-        queue = [track, ...shuffledRest];
-      } else {
-        queue = [...newQueue];
-      }
-    } else if (get().shuffle && queue.length > 0) {
-      // Re-order queue so selected track is at currentIndex
-      const foundIdx = queue.findIndex((t) => t.id === track.id);
-      if (foundIdx === -1) {
-        queue = [track, ...queue];
-        originalQueue = [track, ...originalQueue];
+      let index = newQueue.indexOf(track);
+      if (index < 0) index = newQueue.findIndex(item => item.id === track.id);
+      originalQueue = newQueue.map(item => ({ ...item }));
+      track = originalQueue[index] ?? { ...track };
+      if (index < 0) originalQueue = [track, ...originalQueue];
+      queue = get().shuffle ? [track, ...fisherYatesShuffle(originalQueue.filter(item => item !== track))] : [...originalQueue];
+    } else if (!queue.includes(track)) {
+      track = queue.find(item => item.id === track.id) ?? { ...track };
+      if (!queue.includes(track)) {
+        originalQueue = [...originalQueue, track];
+        queue = [...queue, track];
       }
     }
-
-    const idx = queue.findIndex((t) => t.id === track.id);
-    const resolvedIndex = idx >= 0 ? idx : 0;
+    const resolvedIndex = queue.indexOf(track);
 
     set({
       queue,
       originalQueue,
       currentIndex: resolvedIndex,
       currentTrack: track,
+      isPlaying: false,
       currentTime: 0,
       duration: track.duration_ms / 1000,
     });
 
-    updateMediaSession(track);
-
-    const assetUrl = convertFileSrc(track.path);
     try {
-      await audioEngine.loadAndPlay(assetUrl);
+      updateMediaSession(track);
+      const url = await invoke<string | null>("playback_url", { path: track.path });
+      if (request !== playbackRequest) return;
+      await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path));
+      if (request !== playbackRequest) return;
+      failedPaths.clear();
       set({ isPlaying: true });
     } catch (e) {
+      if (request !== playbackRequest) return;
       get().handleTrackError(
         `Failed to play ${track.path}: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
   },
 
-  setQueue: async (newQueue: TrackRow[], startIndex = 0) => {
-    const originalQueue = [...newQueue];
-    let queue = [...newQueue];
-    const initialTrack = newQueue[startIndex] ?? null;
+  enqueue: track => {
+    const entry = { ...track };
+    set(state => ({ queue: [...state.queue, entry], originalQueue: [...state.originalQueue, entry] }));
+  },
 
-    if (get().shuffle && initialTrack) {
-      const rest = newQueue.filter((_, i) => i !== startIndex);
-      const shuffledRest = fisherYatesShuffle(rest);
-      queue = [initialTrack, ...shuffledRest];
-    }
+  removeQueued: entry => {
+    const {queue, originalQueue, currentTrack, currentIndex, isPlaying} = get();
+    const remaining = queue.filter(item => item !== entry);
+    set({queue: remaining, originalQueue: originalQueue.filter(item => item !== entry),
+      currentIndex: currentTrack ? remaining.indexOf(currentTrack) : -1});
+    if (currentTrack !== entry) return;
+    get().pause();
+    set({currentTrack: null, currentTime: 0, duration: 0});
+    const next = remaining[Math.min(currentIndex, remaining.length - 1)];
+    if (next && isPlaying) void get().playTrack(next);
+  },
 
-    const targetIdx = initialTrack
-      ? queue.findIndex((t) => t.id === initialTrack.id)
-      : 0;
-
-    set({
-      queue,
-      originalQueue,
-      currentIndex: targetIdx >= 0 ? targetIdx : 0,
-      currentTrack: queue[targetIdx] ?? null,
-    });
-
-    if (initialTrack) {
-      await get().playTrack(initialTrack);
+  setQueue: async (tracks, index = 0) => {
+    const track = tracks[index];
+    if (track) await get().playTrack(track, tracks);
+    else if (tracks.length === 0) {
+      get().pause();
+      set({queue: [], originalQueue: [], currentTrack: null, currentIndex: -1, currentTime: 0, duration: 0});
     }
   },
 
@@ -281,10 +306,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   play: async () => {
     const { currentTrack } = get();
     if (!currentTrack) return;
+    if (failedPaths.has(currentTrack.path)) {
+      failedPaths.clear();
+      await get().playTrack(currentTrack);
+      return;
+    }
+    const request = ++playbackRequest;
     try {
       await audioEngine.play();
+      if (request !== playbackRequest) return;
       set({ isPlaying: true });
     } catch (e) {
+      if (request !== playbackRequest) return;
       get().handleTrackError(
         `Playback failed: ${e instanceof Error ? e.message : String(e)}`,
       );
@@ -292,6 +325,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   pause: () => {
+    ++playbackRequest;
     audioEngine.pause();
     set({ isPlaying: false });
   },
@@ -348,7 +382,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const clamped = Math.max(0, Math.min(1, volume));
     audioEngine.setVolume(clamped);
     set({ volume: clamped });
-    void setSetting("player_volume", String(clamped));
+    void persistSetting("player_volume", String(clamped));
   },
 
   toggleShuffle: () => {
@@ -358,7 +392,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (newShuffle) {
       // Fisher-Yates with current track staying first
       if (currentTrack) {
-        const rest = originalQueue.filter((t) => t.id !== currentTrack.id);
+        const rest = originalQueue.filter((t) => t !== currentTrack);
         const shuffledRest = fisherYatesShuffle(rest);
         const newQueue = [currentTrack, ...shuffledRest];
         set({ shuffle: true, queue: newQueue, currentIndex: 0 });
@@ -370,7 +404,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // Restore original queue, keep track of current track's position
       let restoredIndex = 0;
       if (currentTrack) {
-        const found = originalQueue.findIndex((t) => t.id === currentTrack.id);
+        const found = originalQueue.indexOf(currentTrack);
         if (found >= 0) restoredIndex = found;
       }
       set({
@@ -380,7 +414,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       });
     }
 
-    void setSetting("player_shuffle", String(newShuffle));
+    void persistSetting("player_shuffle", String(newShuffle));
   },
 
   toggleRepeat: () => {
@@ -390,7 +424,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newRepeat = modes[nextIdx] ?? "off";
 
     set({ repeat: newRepeat });
-    void setSetting("player_repeat", newRepeat);
+    void persistSetting("player_repeat", newRepeat);
   },
 
   setEq: (band: "bass" | "mid" | "treble", value: number) => {
@@ -398,14 +432,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newEq = { ...get().eq, [band]: clamped };
     audioEngine.setEq(band, clamped);
     set({ eq: newEq });
-    void setSetting("player_eq", JSON.stringify(newEq));
+    void persistSetting("player_eq", JSON.stringify(newEq));
   },
 
   resetEq: () => {
     const zeroEq: EqSettings = { bass: 0, mid: 0, treble: 0 };
     audioEngine.setAllEq(zeroEq);
     set({ eq: zeroEq });
-    void setSetting("player_eq", JSON.stringify(zeroEq));
+    void persistSetting("player_eq", JSON.stringify(zeroEq));
   },
 
   setIsEqOpen: (open: boolean) => {
@@ -429,7 +463,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   handleTrackError: (errorDetails?: string) => {
     const log = useLogStore.getState().addEntry;
     log("ERR", errorDetails || "Playback error on current track");
-    // Automatically skip to next track
-    void get().next();
+    const { currentTrack, queue, currentIndex, repeat } = get();
+    if (!currentTrack) return;
+    failedPaths.add(currentTrack.path);
+    const upcoming = queue.slice(currentIndex + 1);
+    if (repeat === "all") upcoming.push(...queue.slice(0, currentIndex));
+    const next = upcoming.find(track => !failedPaths.has(track.path));
+    if (next) {
+      void get().playTrack(next);
+    } else {
+      get().pause();
+      log("WARN", "Playback stopped. No playable tracks remain in this queue.");
+    }
   },
 }));

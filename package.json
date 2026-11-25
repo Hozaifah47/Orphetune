@@ -14,11 +14,9 @@
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.1.1",
     "@fontsource/jetbrains-mono": "^5.1.1",
-    "@tauri-apps/api": "^2.5.0",
-    "@tauri-apps/plugin-dialog": "^2.2.2",
-    "@tauri-apps/plugin-shell": "^2.2.1",
-    "@tauri-apps/plugin-sql": "^2.2.1",
     "@tanstack/react-virtual": "^3.11.3",
+    "@tauri-apps/api": "^2.5.0",
+    "@tauri-apps/plugin-sql": "^2.2.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",

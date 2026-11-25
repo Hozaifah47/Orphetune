@@ -101,15 +101,12 @@ export async function searchTracks(query: string): Promise<TrackRow[]> {
   );
 }
 
-export async function updateTrackCover(
-  trackId: number,
-  coverPath: string,
-): Promise<void> {
-  const d = await getDb();
-  await d.execute("UPDATE tracks SET cover_path = $1 WHERE id = $2", [
-    coverPath,
-    trackId,
-  ]);
+export async function updateAlbumCover(artist: string, album: string, path: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE tracks SET cover_path = $1 WHERE artist = $2 AND album = $3 AND cover_path IS NULL",
+    [path, artist, album],
+  );
 }
 
 // ─── Playlists ───────────────────────────────────────────────────────
@@ -162,7 +159,7 @@ export async function getPlaylistTracks(
     `SELECT t.* FROM tracks t
      JOIN playlist_tracks pt ON pt.track_id = t.id
      WHERE pt.playlist_id = $1
-     ORDER BY pt.position`,
+     ORDER BY pt.position, pt.id`,
     [playlistId],
   );
 }
@@ -172,14 +169,10 @@ export async function addTrackToPlaylist(
   trackId: number,
 ): Promise<void> {
   const d = await getDb();
-  const rows = await d.select<{ max_pos: number | null }[]>(
-    "SELECT MAX(position) as max_pos FROM playlist_tracks WHERE playlist_id = $1",
-    [playlistId],
-  );
-  const nextPos = (rows[0]?.max_pos ?? -1) + 1;
   await d.execute(
-    "INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position) VALUES ($1, $2, $3)",
-    [playlistId, trackId, nextPos],
+    `INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
+     SELECT $1, $2, COALESCE(MAX(position), -1) + 1 FROM playlist_tracks WHERE playlist_id = $1`,
+    [playlistId, trackId],
   );
   await d.execute(
     "UPDATE playlists SET updated_at = unixepoch() WHERE id = $1",
@@ -203,12 +196,12 @@ export async function reorderPlaylistTracks(
   trackIds: number[],
 ): Promise<void> {
   const d = await getDb();
-  for (let i = 0; i < trackIds.length; i++) {
-    await d.execute(
-      "UPDATE playlist_tracks SET position = $1 WHERE playlist_id = $2 AND track_id = $3",
-      [i, playlistId, trackIds[i]],
-    );
-  }
+  await d.execute(
+    `UPDATE playlist_tracks AS pt SET position = ordered.key
+     FROM json_each($1) AS ordered
+     WHERE pt.playlist_id = $2 AND pt.track_id = ordered.value`,
+    [JSON.stringify(trackIds), playlistId],
+  );
 }
 
 // ─── Settings ────────────────────────────────────────────────────────

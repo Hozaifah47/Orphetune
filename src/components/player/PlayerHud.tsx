@@ -21,6 +21,7 @@ function truncateMiddle(str: string, maxLen: number): string {
 }
 
 export function PlayerHud() {
+  const hasQueue = usePlayerStore(s => s.queue.length > 0);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
@@ -99,7 +100,7 @@ export function PlayerHud() {
 
           {/* Play / Pause Button */}
           <button
-            disabled={!currentTrack}
+            disabled={!currentTrack && !hasQueue}
             onClick={() => void togglePlay()}
             aria-label={isPlaying ? "Pause" : "Play"}
             className="flex h-8 w-8 items-center justify-center bg-crimson text-white transition-fast hover:bg-bright-red hover:text-bg-dark"

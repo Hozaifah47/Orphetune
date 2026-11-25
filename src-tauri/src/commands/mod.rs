@@ -41,6 +41,22 @@ pub struct CoverResult {
 }
 
 #[tauri::command]
+pub async fn playback_url(app: tauri::AppHandle, path: String) -> Result<Option<String>, String> {
+    let file = crate::library_access::authorize(&app, Path::new(&path), false)?;
+    #[cfg(target_os = "linux")]
+    return app
+        .state::<crate::linux_audio::LinuxAudio>()
+        .url(file)
+        .await
+        .map(Some);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = file;
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 pub async fn scan_library(
     app: tauri::AppHandle,
     dir: String,
@@ -181,6 +197,15 @@ pub async fn fetch_cover_art(
     album: String,
     on_event: Channel<ScanEvent>,
 ) -> Result<CoverResult, String> {
+    static LOOKUP: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _lookup = LOOKUP.lock().await;
+    if artist.trim().is_empty()
+        || album.trim().is_empty()
+        || artist.len() > 512
+        || album.len() > 512
+    {
+        return Err("Missing or excessively long album metadata.".into());
+    }
     let cache_dir = app
         .path()
         .app_cache_dir()
@@ -213,6 +238,14 @@ pub async fn fetch_cover_art(
     });
 
     let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() >= 4 || !art_host_allowed(attempt.url()) {
+                attempt.error("Unsupported artwork redirect")
+            } else {
+                attempt.follow()
+            }
+        }))
         .user_agent("Orphetune/0.1 (https://github.com/Hozaifah47/Orphetune)")
         .build()
         .map_err(|e| e.to_string())?;
@@ -285,9 +318,11 @@ async fn try_itunes(
     {
         // Get higher resolution (600x600).
         let hi_res = artwork_url.replace("100x100bb", "600x600bb");
-        let img_bytes = client.get(&hi_res).send().await?.bytes().await?;
-        fs::write(dest, &img_bytes)?;
-        return Ok(true);
+        let url = reqwest::Url::parse(&hi_res)?;
+        if !art_host_allowed(&url) {
+            return Ok(false);
+        }
+        return cache_jpeg(client.get(url).send().await?, dest).await;
     }
 
     Ok(false)
@@ -317,14 +352,60 @@ async fn try_musicbrainz(
 
         let caa_url = format!("https://coverartarchive.org/release/{}/front", mbid);
         let img_resp = client.get(&caa_url).send().await?;
-        if img_resp.status().is_success() {
-            let img_bytes = img_resp.bytes().await?;
-            fs::write(dest, &img_bytes)?;
-            return Ok(true);
-        }
+        return cache_jpeg(img_resp, dest).await;
     }
 
     Ok(false)
+}
+
+fn art_host_allowed(url: &reqwest::Url) -> bool {
+    url.scheme() == "https"
+        && url.host_str().is_some_and(|host| {
+            matches!(
+                host,
+                "itunes.apple.com" | "musicbrainz.org" | "coverartarchive.org" | "archive.org"
+            ) || host.ends_with(".mzstatic.com")
+                || host.ends_with(".archive.org")
+        })
+}
+
+async fn cache_jpeg(
+    mut response: reqwest::Response,
+    dest: &Path,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    const LIMIT: usize = 8 * 1024 * 1024;
+    if !response.status().is_success()
+        || response.content_length().is_some_and(|n| n > LIMIT as u64)
+    {
+        return Ok(false);
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if bytes.len() + chunk.len() > LIMIT {
+            return Ok(false);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    let dest = dest.to_owned();
+    tokio::task::spawn_blocking(
+        move || -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+            let mut decoder = jpeg_decoder::Decoder::new(bytes.as_slice());
+            decoder.set_max_decoding_buffer_size(24 * 1024 * 1024);
+            decoder.read_info()?;
+            let Some(info) = decoder.info() else {
+                return Ok(false);
+            };
+            if u32::from(info.width) * u32::from(info.height) > 6_000_000 {
+                return Ok(false);
+            }
+            decoder.decode()?;
+            let staging = dest.with_extension("part");
+            fs::write(&staging, bytes)?;
+            fs::rename(staging, dest)?;
+            Ok(true)
+        },
+    )
+    .await?
 }
 
 /// Simple percent-encoding for URL query parameters.

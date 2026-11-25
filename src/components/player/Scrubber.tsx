@@ -52,17 +52,8 @@ export function Scrubber() {
     e.preventDefault();
     handleSeekFromEvent(e.nativeEvent);
 
-    const onPointerMove = (ev: PointerEvent) => {
-      handleSeekFromEvent(ev);
-    };
-
-    const onPointerUp = () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    (e.currentTarget as HTMLElement).focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -118,6 +109,9 @@ export function Scrubber() {
         aria-valuenow={Math.round(currentTime)}
         aria-valuetext={formatDuration(currentTime)}
         onPointerDown={handlePointerDown}
+        onPointerMove={e => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) handleSeekFromEvent(e.nativeEvent);
+        }}
         onKeyDown={handleKeyDown}
         className="group relative flex h-4 flex-1 cursor-pointer items-center focus-visible:outline-2 focus-visible:outline-bright-red"
       >

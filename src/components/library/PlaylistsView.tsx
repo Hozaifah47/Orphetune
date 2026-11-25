@@ -16,6 +16,7 @@ export function PlaylistsView() {
     deletePlaylist,
     selectPlaylist,
     removeTrack,
+    reorderTracks,
   } = usePlaylistStore();
 
   const [newName, setNewName] = useState("");
@@ -93,6 +94,14 @@ export function PlaylistsView() {
         <TrackList
           tracks={selectedPlaylistTracks}
           showRemove
+          onMove={(index, offset) => {
+            const ids = selectedPlaylistTracks.map(track => track.id);
+            const id = ids[index];
+            if (id === undefined) return;
+            ids.splice(index, 1);
+            ids.splice(index + offset, 0, id);
+            void reorderTracks(selectedPlaylistId, ids);
+          }}
           onRemove={(track) => void handleRemoveTrack(track.id)}
           onTrackClick={(track) => {
             void playTrack(track, selectedPlaylistTracks);

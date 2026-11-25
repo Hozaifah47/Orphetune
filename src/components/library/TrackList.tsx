@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Plus, Check } from "lucide-react";
+import { Plus, Check, ChevronUp, ChevronDown, ListEnd } from "lucide-react";
 import { usePlayerStore, usePlaylistStore, useLogStore } from "@/stores";
 import { CoverArt } from "./CoverArt";
 import type { TrackRow } from "@/services/db";
@@ -10,6 +10,8 @@ interface TrackListProps {
   onTrackClick?: (track: TrackRow, index: number) => void;
   onRemove?: (track: TrackRow) => void;
   showRemove?: boolean;
+  queueView?: boolean;
+  onMove?: (index: number, offset: number) => void;
 }
 
 function formatDuration(ms: number): string {
@@ -30,10 +32,13 @@ export function TrackList({
   onTrackClick,
   onRemove,
   showRemove = false,
+  onMove,
+  queueView = false,
 }: TrackListProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
+  const enqueue = usePlayerStore(s => s.enqueue);
   const playlists = usePlaylistStore((s) => s.playlists);
   const addTrack = usePlaylistStore((s) => s.addTrack);
 
@@ -65,7 +70,7 @@ export function TrackList({
         const track = tracks[virtualRow.index];
         if (!track) return null;
 
-        const isCurrent = currentTrack?.id === track.id;
+        const isCurrent = queueView ? currentTrack === track : currentTrack?.id === track.id;
         const displayName = truncateMiddle(
           `${track.artist}/${track.album}/${track.title}`,
           55,
@@ -105,6 +110,11 @@ export function TrackList({
               </span>
             </button>
 
+            {!queueView && <button aria-label={`Add ${track.title} to queue`} title="Add to queue"
+              className="p-1 text-muted hover:text-white" onClick={() => { enqueue(track); useLogStore.getState().addEntry("INFO", `Added to queue: ${track.title}`); }}>
+              <ListEnd size={16} />
+            </button>}
+
             {/* Add to Playlist button / dropdown */}
             {!showRemove && playlists.length > 0 && (
               <div className="relative shrink-0">
@@ -139,6 +149,17 @@ export function TrackList({
               </div>
             )}
 
+            {onMove && (
+              <div className="flex">
+                <button aria-label={`Move ${track.title} up`} disabled={virtualRow.index === 0}
+                  className="p-1 text-muted hover:text-white disabled:opacity-40"
+                  onClick={() => onMove(virtualRow.index, -1)}><ChevronUp size={16} /></button>
+                <button aria-label={`Move ${track.title} down`} disabled={virtualRow.index === tracks.length - 1}
+                  className="p-1 text-muted hover:text-white disabled:opacity-40"
+                  onClick={() => onMove(virtualRow.index, 1)}><ChevronDown size={16} /></button>
+              </div>
+            )}
+
             {/* Remove from playlist button */}
             {showRemove && onRemove && (
               <button
@@ -152,7 +173,7 @@ export function TrackList({
           </div>
         );
       }),
-    [virtualItems, tracks, onTrackClick, onRemove, showRemove, currentTrack, isPlaying, playlists, activeMenuTrackId],
+    [virtualItems, queueView, enqueue, tracks, onTrackClick, onRemove, onMove, showRemove, currentTrack, isPlaying, playlists, activeMenuTrackId],
   );
 
   if (tracks.length === 0) {

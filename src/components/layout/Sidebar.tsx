@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Library, Search, ListMusic, Mic2 } from "lucide-react";
+import { Library, Search, ListMusic, Mic2, ListEnd } from "lucide-react";
 import { useAppStore, usePlaylistStore } from "@/stores";
 import type { View } from "@/stores";
 
@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "library", label: "Library", icon: Library },
   { view: "search", label: "Search", icon: Search },
   { view: "playlists", label: "Playlists", icon: ListMusic },
+  { view: "queue", label: "Queue", icon: ListEnd },
   { view: "lyrics", label: "Lyrics", icon: Mic2 },
 ];
 
