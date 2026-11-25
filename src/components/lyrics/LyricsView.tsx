@@ -26,29 +26,27 @@ export function LyricsView() {
 
   const [latin, setLatin] = useState(() => localStorage.getItem("lyrics-script") === "latin");
   const timingKey = "lyrics-timing-" + currentTrack?.id;
-  const [tapTimes, setTapTimes] = useState<number[] | null>(null);
-  const [timingVersion, refreshTiming] = useState(0);
-  useEffect(() => setTapTimes(null), [timingKey, plainLyrics]);
+  const duration = usePlayerStore(s => s.duration);
+  const introEnd = usePlayerStore(s => s.introEnd);
   const plainLines = useMemo(() => plainLyrics?.split(/\r?\n/).filter(line => line.trim()) ?? [], [plainLyrics]);
   const lyrics = useMemo(() => {
-    if (providerLyrics || !plainLyrics) return providerLyrics;
+    if (providerLyrics || !plainLyrics || !plainLines.length) return providerLyrics;
+    let times: number[] | undefined;
     try {
       const saved = JSON.parse(localStorage.getItem(timingKey) ?? "null");
-      if (saved?.text !== plainLyrics || !Array.isArray(saved.times) || saved.times.length !== plainLines.length) return null;
-      return { lines: plainLines.map((text, i) => ({ id: String(i), text, time: Number(saved.times[i]) })), offsetMs: 0 };
-    } catch { return null; }
-  }, [providerLyrics, plainLyrics, plainLines, timingKey, timingVersion]);
-  function tapLine() {
-    if (!tapTimes || !isPlaying) return;
-    const time = audioEngine.getCurrentTime();
-    if (time <= (tapTimes[tapTimes.length - 1] ?? -1)) return;
-    const times = [...tapTimes, time];
-    if (times.length === plainLines.length) {
-      localStorage.setItem(timingKey, JSON.stringify({ text: plainLyrics, times }));
-      refreshTiming(n => n + 1);
-      setTapTimes(null);
-    } else setTapTimes(times);
-  }
+      if (saved?.text === plainLyrics && saved.times?.length === plainLines.length && saved.times.every(Number.isFinite)) times = saved.times;
+    } catch { /* Ignore incomplete saved timings. */ }
+    if (!times && duration <= introEnd) return null;
+    const weights = plainLines.map(text => Math.max(2, text.trim().split(/\s+/).length));
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    let position = 0;
+    const lines = plainLines.map((text, i) => {
+      const time = times?.[i] ?? introEnd + position / total * (duration - introEnd);
+      position += weights[i]!;
+      return { id: String(i), text, time };
+    });
+    return { lines, offsetMs: 0, estimated: !times };
+  }, [providerLyrics, plainLyrics, plainLines, timingKey, duration, introEnd]);
   const sourceLines = useMemo(() => lyrics?.lines.map(line => line.text) ?? plainLines, [lyrics, plainLines]);
   const romanized = useMemo(() => sourceLines.map(romanize), [sourceLines]);
   const displayLines = latin ? romanized : sourceLines;
@@ -128,7 +126,7 @@ export function LyricsView() {
       <div className="flex items-center justify-between border-b border-non-text/20 pb-3 mb-4">
         <div>
           <h2 className="font-sans text-base font-semibold text-white">Lyrics</h2>
-          {lyrics && <p className="text-xs text-muted">Select a line to play from there.</p>}
+          {lyrics && <p className="text-xs text-muted">{"estimated" in lyrics && lyrics.estimated ? "Estimated timing · " : ""}Select a line to play from there.</p>}
           {trackPath && (
             <p className="font-mono text-xs text-muted" title={trackPath}>
               {trackPath}
@@ -136,18 +134,17 @@ export function LyricsView() {
           )}
         </div>
 
-        {plainLines.length > 0 && !providerLyrics && (
-          <button className="text-xs text-muted hover:text-white" onClick={() => {
-            if (tapTimes) setTapTimes(null);
-            else { setTapTimes([]); seek(usePlayerStore.getState().introEnd); void play(); }
-          }}>{tapTimes ? "Cancel timing" : lyrics ? "Redo timing" : "Sync lines"}</button>
-        )}
         {canRomanize && (
-          <select aria-label="Lyrics script" value={latin ? "latin" : "original"} className="bg-bg-dark text-white text-sm p-2"
-            onChange={event => { setLatin(event.target.value === "latin"); localStorage.setItem("lyrics-script", event.target.value); }}>
-            <option value="original">Original script</option>
-            <option value="latin">Romanized (Latin letters)</option>
-          </select>
+          <div role="group" aria-label="Lyrics script" className="flex items-center gap-1 border-b border-non-text/30">
+            {["Original", "Romanized"].map((label, index) => {
+              const selected = latin === Boolean(index);
+              return <button key={label} type="button" aria-pressed={selected}
+                className={`border-b-2 px-3 py-2 text-sm ${selected ? "border-bright-red text-white" : "border-transparent text-muted hover:text-white"}`}
+                onClick={() => { setLatin(Boolean(index)); localStorage.setItem("lyrics-script", index ? "latin" : "original"); }}>
+                {label}
+              </button>;
+            })}
+          </div>
         )}
         {currentTrack && (
           <button
@@ -198,13 +195,6 @@ export function LyricsView() {
                 LRCLIB has no lyrics for this track
               </p>
             </div>
-          </div>
-        ) : tapTimes ? (
-          <div className="m-auto max-w-xl text-center">
-            <p className="mb-4 text-sm text-muted">Tap each line when you hear it begin · {tapTimes.length + 1} / {plainLines.length}</p>
-            <button disabled={!isPlaying} onClick={tapLine} className="p-4 text-3xl font-bold text-white disabled:opacity-50">
-              {displayLines[tapTimes.length]}
-            </button>
           </div>
         ) : plainLyrics && !lyrics ? (
           /* Plain Unsynced Lyrics */

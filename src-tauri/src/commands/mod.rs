@@ -462,3 +462,53 @@ pub async fn fetch_lyrics(
 ) -> Result<crate::lyrics::LyricsResult, String> {
     crate::lyrics::fetch_lyrics(&artist, &title, &album, duration_s).await
 }
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IntroSegment {
+    segment: [f64; 2],
+    video_duration: f64,
+}
+
+#[tauri::command]
+pub async fn lookup_intro(video_id: String, duration: f64) -> Result<f64, String> {
+    if video_id.len() != 11
+        || !video_id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+    {
+        return Err("Invalid video identifier".into());
+    }
+    let response = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
+        .map_err(|e| e.to_string())?
+        .get("https://sponsor.ajay.app/api/skipSegments")
+        .query(&[
+            ("videoID", video_id.as_str()),
+            ("categories", r#"["sponsor","selfpromo","music_offtopic"]"#),
+        ])
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(0.0);
+    }
+    let mut segments: Vec<IntroSegment> = response
+        .error_for_status()
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+    segments.sort_by(|a, b| a.segment[0].total_cmp(&b.segment[0]));
+    let mut end: f64 = 0.0;
+    for item in segments {
+        if (item.video_duration - duration).abs() <= 0.5
+            && item.segment[0] <= end + 0.5
+            && item.segment[1] < duration
+        {
+            end = end.max(item.segment[1]);
+        }
+    }
+    Ok(end)
+}

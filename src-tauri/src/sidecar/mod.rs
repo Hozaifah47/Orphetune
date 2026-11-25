@@ -238,7 +238,7 @@ pub async fn download_track(
         "--ignore-config",
         "--no-overwrites",
         "--sponsorblock-remove",
-        "sponsor,selfpromo",
+        "sponsor,selfpromo,music_offtopic",
         "--no-playlist",
         "-x",
         "--audio-format",

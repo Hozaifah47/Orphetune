@@ -251,7 +251,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       updateMediaSession(track);
       const url = await invoke<string | null>("playback_url", { path: track.path });
       if (request !== playbackRequest) return;
-      const saved = Number(await Promise.resolve(getSetting("intro_" + track.id)).catch(() => null));
+      const key = "intro_" + track.id;
+      const marker = await Promise.resolve(getSetting(key)).catch(() => null);
+      let saved = Number(marker);
+      const videoId = track.path.match(/\[([A-Za-z0-9_-]{11})\]\.mp3$/i)?.[1];
+      if (marker == null && videoId && request === playbackRequest) {
+        saved = await invoke<number>("lookup_intro", { videoId, duration: track.duration_ms / 1000 }).catch(() => 0);
+        if (saved > 0) void persistSetting(key, String(saved));
+      }
       if (request !== playbackRequest) return;
       const introEnd = saved > 0 && saved < track.duration_ms / 1000 ? saved : 0;
       set({ introEnd });

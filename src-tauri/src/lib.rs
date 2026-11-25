@@ -106,6 +106,7 @@ pub fn run() {
             commands::download_track,
             commands::cancel_download,
             commands::fetch_lyrics,
+            commands::lookup_intro,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Orphetune");
