@@ -109,6 +109,7 @@ async function persistSetting(key: string, value: string): Promise<void> {
 }
 
 let playbackRequest = 0;
+let loadedTrack: TrackRow | null = null;
 const failedPaths = new Set<string>();
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -171,10 +172,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // Hook up engine callbacks
       audioEngine.setCallbacks({
         onEnded: () => {
-          get().handleTrackEnded();
+          if (loadedTrack && loadedTrack === get().currentTrack) get().handleTrackEnded();
         },
         onError: (err) => {
           const track = get().currentTrack;
+          if (!loadedTrack || track !== loadedTrack) return;
           const msg = err && "message" in err ? err.message : "decode error";
           get().handleTrackError(
             track ? `${track.path} (${msg})` : `Playback error (${msg})`,
@@ -217,6 +219,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   playTrack: async (track: TrackRow, newQueue?: TrackRow[]) => {
     const request = ++playbackRequest;
+    loadedTrack = null;
     audioEngine.pause();
     if (newQueue) failedPaths.clear();
     let {queue, originalQueue} = get();
@@ -264,6 +267,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ introEnd });
       await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path), introEnd);
       if (request !== playbackRequest) return;
+      loadedTrack = track;
       failedPaths.clear();
       set({ isPlaying: true });
     } catch (e) {
@@ -320,7 +324,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   play: async () => {
     const { currentTrack } = get();
     if (!currentTrack) return;
-    if (failedPaths.has(currentTrack.path)) {
+    if (loadedTrack !== currentTrack || failedPaths.has(currentTrack.path)) {
       failedPaths.clear();
       await get().playTrack(currentTrack);
       return;
@@ -395,8 +399,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     void persistSetting("intro_" + currentTrack.id, String(seconds));
   },
   seek: (seconds: number) => {
-    audioEngine.seek(seconds);
-    set({ currentTime: seconds });
+    if (!Number.isFinite(seconds) || !get().currentTrack) return;
+    const position = Math.max(0, Math.min(seconds, get().duration));
+    audioEngine.seek(position);
+    set({ currentTime: position });
   },
 
   setVolume: (volume: number) => {

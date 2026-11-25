@@ -15,7 +15,7 @@ const second = {...first, id: 2, title: "Second", path: "/second.wav"};
 
 beforeEach(() => {
   vi.stubGlobal("navigator", {});
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   usePlayerStore.setState(usePlayerStore.getInitialState());
   vi.mocked(invoke).mockResolvedValue(null);
 });
@@ -40,4 +40,28 @@ it("stops when all files fail even under repeat all", async () => {
   await vi.waitFor(() => expect(audioEngine.loadAndPlay).toHaveBeenCalledTimes(2));
   expect(usePlayerStore.getState().isPlaying).toBe(false);
   expect(usePlayerStore.getState().currentIndex).toBe(1);
+});
+
+it("resumes the newly selected track if paused before its URL arrives", async () => {
+  const player = usePlayerStore.getState();
+  await player.setQueue([first, second]);
+  let resolve!: (url: string) => void;
+  vi.mocked(invoke).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  const pending = player.next();
+  player.pause();
+  await player.play();
+  resolve("stale-url");
+  await pending;
+  expect(audioEngine.loadAndPlay).toHaveBeenLastCalledWith(second.path, 0);
+  expect(usePlayerStore.getState().currentTrack?.id).toBe(second.id);
+  expect(usePlayerStore.getState().isPlaying).toBe(true);
+});
+
+it("bounds seeks at both ends of the track", async () => {
+  await usePlayerStore.getState().setQueue([first]);
+  for (const [input, expected] of [[-10, 0], [60, 6]] as const) {
+    usePlayerStore.getState().seek(input);
+    expect(audioEngine.seek).toHaveBeenLastCalledWith(expected);
+    expect(usePlayerStore.getState().currentTime).toBe(expected);
+  }
 });

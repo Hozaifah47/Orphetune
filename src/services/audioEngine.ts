@@ -129,8 +129,9 @@ class AudioEngine {
   }
 
   public async play(): Promise<void> {
+    const revision = this.sourceRevision;
     await this.ensureContext();
-    if (this.audio && this.audio.src) {
+    if (this.audio && this.audio.src && revision === this.sourceRevision) {
       await this.audio.play();
     }
   }
