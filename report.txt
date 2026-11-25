@@ -1,0 +1,35 @@
+Orphetune project report
+25 November 2026 · Ubuntu desktop
+
+Current status
+The desktop launcher opens an installed release that supports downloads and local playback. The user confirmed that music plays. The installed Ubuntu release includes improved lyrics matching and removes SponsorBlock sponsor and self-promotion segments from new downloads. Untagged ads may still be heard.
+
+Completed
+- Added a desktop shortcut and an applications-menu entry named Orphetune. The installed release includes yt-dlp and FFmpeg. Launching the shortcut started the installed executable.
+- Fixed a startup crash in SQLite initialization. Library scanning now waits for database writes before refreshing the track list. File access is scoped to the selected library and cached artwork.
+- Added Linux audio streaming with byte-range seeking. Verified audio output from a packaged Linux build. Updated queue, playlist and artwork handling and replaced the volume compass with an ouroboros.
+- Search results show transfer percentage, conversion and save status, or a retryable error. Completed downloads appear in the Downloads playlist. A real transfer produced an MP3. A separate UI test with simulated transfer events and real SQLite verified progress, playlist membership and persistence after reload.
+- Added a Lyrics control under the artist name. For timed lyrics, selecting a line seeks and starts playback, including from pause. The view labels plain lyrics, and the store supports offline cache and guards against results arriving for an earlier track.
+- Renamed the working branch to stabilize and removed the previous remote branch. GitHub has main and stabilize. Current project documents use neutral names. Historical commits retain their original text.
+
+Lyrics matching
+The two downloaded files have video titles with extra credits, and list the uploader as the artist. The previous release sent those tags to LRCLIB and reported no match.
+
+The installed lookup in src-tauri/src/lyrics/mod.rs searches by a cleaned song title and checks the performer against the credits. It accepts timestamps only for a close duration match and can use plain lyrics for a different-length recording.
+- Ghulam Ali, “Yeh Dil Ye Pagal Dil Mera (Awargi)” — the file is 418.536 seconds. LRCLIB returned a 419-second recording with timed lyrics. The live regression test confirmed the lookup returned synced lyrics.
+- Jagjit Singh, “Kal Chaudhvin Ki Raat Thi” — the file is 391.128 seconds. One provider result is 371 seconds. The live test confirmed lyrics were found but did not assert whether they were plain or timed.
+
+The frontend suite passed all 16 tests. All four Rust tests passed, including the live lyrics test. Rust formatting, strict Clippy and the release build passed. The installed executable matched the release build and started from the desktop launcher. In a local audio fixture the downloader removed a three-second marked sponsor segment from a ten-second track, producing a 7.05-second MP3.
+
+Next session
+- Check lyric highlighting and click-to-play against the audio in both downloaded recordings. Restart offline and verify cached lyrics.
+- Check live SponsorBlock coverage on a real music download. Add offline lyrics regression cases for wrong performers and alternate recordings.
+- Check that the selected library folder is the intended download destination.
+
+Other release checks still open
+- Exercise search through download, restart and playback in one installed-app session. Check cancellation during transfer and conversion, retry after a network failure, duplicate downloads and preservation of existing playlists.
+- Check folder re-selection and access after restart. Measure a large scan and rescan with mixed formats, Unicode paths and damaged files.
+- Check keyboard navigation, focus, EQ and layout at the smallest supported window size. Exercise offline playback, shuffle, repeat and queue transitions in the installed build.
+- Linux deb, rpm and AppImage packages were built previously. Verify the final package on a clean Linux installation, including codecs and bundled download tools. Windows and macOS installation and playback remain unverified.
+
+docs/SPEC.md contains the full acceptance criteria. docs/STATUS.md records the original audit and earlier verification results, including baseline failures that were subsequently fixed.

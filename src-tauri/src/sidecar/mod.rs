@@ -237,6 +237,8 @@ pub async fn download_track(
     cmd.current_dir(&dest_path).kill_on_drop(true).args([
         "--ignore-config",
         "--no-overwrites",
+        "--sponsorblock-remove",
+        "sponsor,selfpromo",
         "--no-playlist",
         "-x",
         "--audio-format",
