@@ -91,13 +91,13 @@ export async function getKnownFiles(): Promise<
 
 export async function searchTracks(query: string): Promise<TrackRow[]> {
   const d = await getDb();
-  const pattern = `%${query}%`;
+  const words = query.trim().split(/\s+/).filter(Boolean).slice(0, 12);
+  if (!words.length) return [];
+  const conditions = words.map(() => "instr(lower(title || ' ' || artist || ' ' || album), lower(?)) > 0");
   return d.select<TrackRow[]>(
-    `SELECT * FROM tracks
-     WHERE title LIKE $1 OR artist LIKE $1 OR album LIKE $1
-     ORDER BY artist, album, track_no
-     LIMIT 100`,
-    [pattern],
+    `SELECT * FROM tracks WHERE ${conditions.join(" AND ")}
+     ORDER BY title = ? COLLATE NOCASE DESC, artist, album, track_no, title LIMIT 100`,
+    [...words, query.trim()],
   );
 }
 

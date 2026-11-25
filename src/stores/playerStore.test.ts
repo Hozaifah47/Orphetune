@@ -4,6 +4,7 @@ import { audioEngine } from "@/services/audioEngine";
 import { usePlayerStore } from "./playerStore";
 import type { TrackRow } from "@/services/db";
 
+vi.mock("./collectionStore", () => ({useCollections: {getState: () => ({played: vi.fn()})}}));
 vi.mock("@tauri-apps/api/core", () => ({invoke: vi.fn(), convertFileSrc: (p: string) => p}));
 vi.mock("@/services/db", () => ({getSetting: vi.fn(), setSetting: vi.fn()}));
 vi.mock("@/services/audioEngine", () => ({

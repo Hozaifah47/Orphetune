@@ -71,6 +71,13 @@ fn get_migrations() -> Vec<Migration> {
               CREATE UNIQUE INDEX idx_playlists_system_key ON playlists(system_key);",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "local favorites and recent playback",
+            sql: "CREATE TABLE liked_tracks(track_id INTEGER PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE);
+                  CREATE TABLE recent_tracks(sequence INTEGER PRIMARY KEY AUTOINCREMENT, track_id INTEGER NOT NULL UNIQUE REFERENCES tracks(id) ON DELETE CASCADE);",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

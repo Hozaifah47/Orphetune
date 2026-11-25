@@ -176,3 +176,7 @@ The inherited system wrapper reported yt-dlp 2024.04.09. It could search but ret
 ### Linux packaging
 
 The baseline bundler produced deb and rpm packages before panicking when looking for an AppImage icon. Configuring the tracked square platform icons allowed all three packages to build. The Ubuntu release binary opened a native WebKit window in a disposable profile. A clean operating-system install has not been exercised.
+
+### Phase 6 collection views
+
+A Linux WebKit test launched the new release with a copy of the pre-migration database. It added two songs to favorites and one playlist, checked their order in SQLite, requested playback through the artist page, and confirmed a recent-playback entry. After restarting, the app showed both liked tracks and one recent track. This checkpoint covers SQLite selection and playback feedback on Linux. Layout and responsiveness for unusually large numbers of separate artists remain unmeasured.

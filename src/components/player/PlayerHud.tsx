@@ -8,8 +8,10 @@ import {
   Repeat1,
   Sliders,
   Terminal,
+  Heart,
   ListMusic,
 } from "lucide-react";
+import { useCollections } from "@/stores/collectionStore";
 import { useAppStore } from "@/stores/appStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { TerminalLog } from "@/components/hud/TerminalLog";
@@ -29,6 +31,7 @@ export function PlayerHud() {
   const markIntro = usePlayerStore(s => s.markIntro);
   const hasQueue = usePlayerStore(s => s.queue.length > 0);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const liked = useCollections(s => !!currentTrack && s.liked.has(currentTrack.id));
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const next = usePlayerStore((s) => s.next);
@@ -158,6 +161,9 @@ export function PlayerHud() {
 
       {/* Right: EQ Button + Volume Dial + Terminal Log */}
       <div className="flex w-40 lg:w-56 xl:w-72 shrink-0 items-center justify-end gap-3">
+        {currentTrack && <button aria-label={liked ? "Unlike current song" : "Like current song"} aria-pressed={liked}
+          onClick={() => void useCollections.getState().setLiked([currentTrack.id], !liked)} className="p-1 text-muted hover:text-white">
+          <Heart size={16} fill={liked ? "currentColor" : "none"} /></button>}
         {/* EQ Modal Trigger */}
         <button
           onClick={() => setIsEqOpen(!isEqOpen)}

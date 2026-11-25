@@ -1,3 +1,4 @@
+import { useCollections } from "./collectionStore";
 import { create } from "zustand";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { audioEngine, type EqSettings } from "@/services/audioEngine";
@@ -24,6 +25,7 @@ interface PlayerState {
   initSettings: () => Promise<void>;
   playTrack: (track: TrackRow, newQueue?: TrackRow[]) => Promise<void>;
   enqueue: (track: TrackRow) => void;
+  enqueueMany: (tracks: TrackRow[]) => void;
   removeQueued: (track: TrackRow) => void;
   setQueue: (newQueue: TrackRow[], startIndex?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
@@ -268,6 +270,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path), introEnd);
       if (request !== playbackRequest) return;
       loadedTrack = track;
+      void useCollections.getState().played(track.id);
       failedPaths.clear();
       set({ isPlaying: true });
     } catch (e) {
@@ -278,9 +281,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  enqueue: track => {
-    const entry = { ...track };
-    set(state => ({ queue: [...state.queue, entry], originalQueue: [...state.originalQueue, entry] }));
+  enqueue: track => get().enqueueMany([track]),
+
+  enqueueMany: tracks => {
+    const entries = tracks.map(track => ({ ...track }));
+    set(state => ({ queue: [...state.queue, ...entries], originalQueue: [...state.originalQueue, ...entries] }));
   },
 
   removeQueued: entry => {

@@ -5,12 +5,15 @@ import { PlayerHud } from "./components/player/PlayerHud";
 import { EqModal } from "./components/eq/EqModal";
 import { useAudioEngine } from "./hooks/useAudioEngine";
 import { getYtdlpVersion } from "./services";
-import { useLogStore } from "./stores";
+import { useCollections } from "./stores/collectionStore";
+import { useLibraryStore, useLogStore } from "./stores";
 
 export default function App() {
   useAudioEngine();
 
   useEffect(() => {
+    void useCollections.getState().load();
+    void useLibraryStore.getState().init().catch(error => useLogStore.getState().addEntry("ERR",String(error)));
     void getYtdlpVersion()
       .then((ver) => {
         useLogStore.getState().addEntry("INFO", `yt-dlp version: ${ver}`);

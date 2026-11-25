@@ -9,6 +9,9 @@ interface TrackListProps {
   tracks: TrackRow[];
   onTrackClick?: (track: TrackRow, index: number) => void;
   onRemove?: (track: TrackRow) => void;
+  selectedIds?: ReadonlySet<number>;
+  onSelect?: (id: number) => void;
+  onActions?: (id: number) => void;
   showRemove?: boolean;
   queueView?: boolean;
   onMove?: (index: number, offset: number) => void;
@@ -34,6 +37,7 @@ export function TrackList({
   showRemove = false,
   onMove,
   queueView = false,
+  selectedIds, onSelect, onActions,
 }: TrackListProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -81,6 +85,7 @@ export function TrackList({
         return (
           <div
             key={virtualRow.key}
+            onContextMenu={onActions ? event => { event.preventDefault(); onActions(track.id); } : undefined}
             className={`absolute left-0 right-0 flex items-center gap-3 px-4 transition-fast ${
               isCurrent ? "bg-white/10" : "hover:bg-white/5"
             }`}
@@ -89,6 +94,8 @@ export function TrackList({
               height: `${String(virtualRow.size)}px`,
             }}
           >
+            {onSelect && <input type="checkbox" checked={selectedIds?.has(track.id) ?? false}
+              aria-label={`Select ${track.title}`} onChange={() => onSelect(track.id)} />}
             <button
               className="flex flex-1 items-center gap-3 text-left min-w-0"
               onClick={() => onTrackClick?.(track, virtualRow.index)}
@@ -173,7 +180,7 @@ export function TrackList({
           </div>
         );
       }),
-    [virtualItems, queueView, enqueue, tracks, onTrackClick, onRemove, onMove, showRemove, currentTrack, isPlaying, playlists, activeMenuTrackId],
+    [virtualItems, selectedIds, onSelect, onActions, queueView, enqueue, tracks, onTrackClick, onRemove, onMove, showRemove, currentTrack, isPlaying, playlists, activeMenuTrackId],
   );
 
   if (tracks.length === 0) {

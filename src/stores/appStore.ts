@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type View = "library" | "search" | "playlists" | "lyrics" | "queue";
+export type View = "home" | "artists" | "liked" | "recent" | "songs" | "library" | "search" | "playlists" | "lyrics" | "queue";
 
 interface AppState {
   currentView: View;
@@ -8,6 +8,6 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  currentView: "library",
+  currentView: "home",
   setView: (view) => set({ currentView: view }),
 }));

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Library, Search, ListMusic, Mic2, ListEnd } from "lucide-react";
+import { House, Users, Heart, History, Disc3, Library, Search, ListMusic, Mic2, ListEnd } from "lucide-react";
 import { useAppStore, usePlaylistStore } from "@/stores";
 import type { View } from "@/stores";
 
@@ -11,7 +11,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: "library", label: "Library", icon: Library },
+  { view: "home", label: "Home", icon: House },
+  { view: "songs", label: "Songs", icon: Library },
+  { view: "library", label: "Albums", icon: Disc3 },
+  { view: "artists", label: "Artists", icon: Users },
+  { view: "liked", label: "Liked songs", icon: Heart },
+  { view: "recent", label: "Recently played", icon: History },
   { view: "search", label: "Search", icon: Search },
   { view: "playlists", label: "Playlists", icon: ListMusic },
   { view: "queue", label: "Queue", icon: ListEnd },
@@ -30,7 +35,7 @@ export function Sidebar() {
   }, [loadPlaylists]);
 
   return (
-    <aside className="flex h-full w-48 shrink-0 flex-col border-r border-non-text/20 py-6">
+    <aside className="flex h-full overflow-y-auto w-48 shrink-0 flex-col border-r border-non-text/20 py-6">
       <div className="mb-8 px-5">
         <h1 className="font-sans text-lg font-semibold tracking-wide text-white">
           Orphetune

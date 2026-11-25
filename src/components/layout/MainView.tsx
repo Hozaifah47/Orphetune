@@ -1,3 +1,4 @@
+import { CollectionView } from "@/components/library/CollectionView";
 import { TrackList } from "@/components/library/TrackList";
 import { usePlayerStore, useAppStore } from "@/stores";
 import { LibraryView } from "@/components/library/LibraryView";
@@ -20,6 +21,7 @@ export function MainView() {
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
+      {(currentView === "home" || currentView === "artists" || currentView === "songs" || currentView === "liked" || currentView === "recent") && <CollectionView key={currentView} view={currentView} />}
       {currentView === "library" && <LibraryView />}
       {currentView === "search" && <SearchView />}
       {currentView === "playlists" && <PlaylistsView />}

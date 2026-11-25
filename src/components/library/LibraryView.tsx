@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { FolderOpen, RefreshCw, ArrowLeft, Play } from "lucide-react";
 import { useLibraryStore, usePlayerStore } from "@/stores";
 import { TerminalLog } from "@/components/hud/TerminalLog";
@@ -17,7 +17,6 @@ export function LibraryView() {
     initialized,
     onlineArt,
     setOnlineArt,
-    init,
     pickFolder,
     rescan,
   } = useLibraryStore();
@@ -25,12 +24,9 @@ export function LibraryView() {
   const playTrack = usePlayerStore((s) => s.playTrack);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
 
-  useEffect(() => {
-    void init();
-  }, [init]);
 
   const albumTracks: TrackRow[] = selectedAlbum
-    ? tracks.filter((t) => selectedAlbum.trackIds.includes(t.id))
+    ? tracks.filter(t => t.album === selectedAlbum.name && t.artist === selectedAlbum.artist)
     : [];
 
   const handleAlbumClick = useCallback((album: Album) => {
@@ -112,7 +108,7 @@ export function LibraryView() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4">
         <h2 className="font-sans text-lg font-semibold text-white">
-          Library
+          Albums
         </h2>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-muted">
