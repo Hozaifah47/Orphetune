@@ -51,3 +51,6 @@ Linux packaging completed successfully for deb, rpm and AppImage. Phase commits 
 Phase 2 — Local library
 Fixed missed updates when metadata changes within the same second without changing file size. New scans and downloaded files store microsecond modification times. Older catalog rows refresh on their next scan with the same IDs. Completed batches move into scan events without cloning every track.
 Verified native scans through 50,000 generated tracks, restart persistence, playlist creation, artwork, incremental tag edits and virtualized track controls. See docs/PERFORMANCE.md for the measured timings and fixture limitations. Phase 3 is audio and queue verification.
+
+Phase 3 — Core playback and queue
+Repaired a pause/resume race during source changes and bounded seeks. Native output measurements and remaining platform checks are in docs/AUDIO_ENGINE.md. All 18 frontend tests and four offline Rust tests passed. Strict Clippy passed and the Ubuntu Debian package built. Next approval checkpoint is Phase 4, discovery, downloads, cancellation and ingestion.

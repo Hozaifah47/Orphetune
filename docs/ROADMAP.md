@@ -5,7 +5,7 @@
 | 0 | Audit, build and dependency baseline | Current Ubuntu audit in STATUS.md |
 | 1 | Desktop foundation, navigation, HUD and diagnostics | Ubuntu foundation checkpoint verified |
 | 2 | Library, metadata, artwork, basic playlists and persistence | Ubuntu local library checkpoint verified. Measurements in PERFORMANCE.md |
-| 3 | Playback, queue, EQ and media controls over the library | Partial. Linux playback verified previously |
+| 3 | Playback, queue, EQ and media controls over the library | Ubuntu core playback and queue checkpoint verified. See AUDIO_ENGINE.md |
 | 4 | Discovery, download, cancellation and import | Partial. Conversion cancellation needs end-to-end verification |
 | 5 | Interactive lyrics and cache | Partial. Provider, parser and store tests exist. Offline native replay and vocal alignment remain open |
 | 6 | Home, artists, favorites and richer library navigation | Expansion after baseline |
