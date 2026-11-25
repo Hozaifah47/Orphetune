@@ -126,9 +126,8 @@ pub async fn scan_library(
             // Flush batch every 50 tracks.
             if batch.len() >= 50 {
                 let _ = on_event_clone.send(ScanEvent::Tracks {
-                    tracks: batch.clone(),
+                    tracks: std::mem::replace(&mut batch, Vec::with_capacity(50)),
                 });
-                batch.clear();
                 let _ = on_event_clone.send(ScanEvent::Progress { scanned, total });
             }
         }
@@ -177,7 +176,7 @@ pub async fn scan_file(app: tauri::AppHandle, path: String) -> Result<ScannedTra
         .modified()
         .ok()
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as i64)
+        .map(|d| d.as_micros() as i64)
         .unwrap_or(0);
     let size = metadata.len() as i64;
 

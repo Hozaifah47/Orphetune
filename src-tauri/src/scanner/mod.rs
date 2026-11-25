@@ -79,7 +79,7 @@ pub fn walk_library(
             .modified()
             .ok()
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as i64)
+            .map(|d| d.as_micros() as i64)
             .unwrap_or(0);
         let size = metadata.len() as i64;
 
@@ -101,4 +101,32 @@ pub fn walk_library(
     }
 
     (discovered, skipped, warnings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn rescans_same_size_file_changed_within_one_second() {
+        let dir = std::env::temp_dir().join(format!("orphetune-mtime-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("track.wav");
+        let file = fs::File::create(&path).unwrap();
+        let base = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        file.set_modified(base).unwrap();
+        let (first, _, _) = walk_library(&dir, &HashMap::new());
+        let known = HashMap::from([(
+            path.to_string_lossy().into_owned(),
+            (first[0].mtime, first[0].size),
+        )]);
+        assert_eq!(walk_library(&dir, &known).1, 1);
+        file.set_modified(base + Duration::from_millis(100))
+            .unwrap();
+        assert_eq!(walk_library(&dir, &known).0.len(), 1);
+        drop(file);
+        fs::remove_file(path).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
 }

@@ -47,3 +47,7 @@ Updated the development test runner to resolve three audit findings. npm audit r
 Launch with the desktop shortcut or npm run tauri dev. Test with npm test and npm run build. In src-tauri run cargo fmt --check, cargo check, cargo test and cargo clippy --all-targets -- -D warnings. Produce Linux installers with npm run tauri build.
 Next approval checkpoint is phase 2, local library persistence and scan verification. Clean installations on all target platforms, large-library benchmarks and full release acceptance remain open.
 Linux packaging completed successfully for deb, rpm and AppImage. Phase commits are 8993318 (audit), ba24a0e (test tooling), and 1ebefd9 (HUD).
+
+Phase 2 — Local library
+Fixed missed updates when metadata changes within the same second without changing file size. New scans and downloaded files store microsecond modification times. Older catalog rows refresh on their next scan with the same IDs. Completed batches move into scan events without cloning every track.
+Verified native scans through 50,000 generated tracks, restart persistence, playlist creation, artwork, incremental tag edits and virtualized track controls. See docs/PERFORMANCE.md for the measured timings and fixture limitations. Phase 3 is audio and queue verification.
