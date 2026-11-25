@@ -37,3 +37,20 @@ it("loads offline lyrics and preserves them through a failed refresh", async () 
   expect(useLyricsStore.getState()).toMatchObject({ plainLyrics: "cached", notFound: false, isLoading: false });
   expect(saveLyrics).not.toHaveBeenCalled();
 });
+
+it("displays fetched timed lyrics even if SQLite cannot save them", async () => {
+  vi.mocked(fetchLyrics).mockResolvedValue({ synced: "[00:03.50]Fixture", plain: null, instrumental: false });
+  vi.mocked(saveLyrics).mockRejectedValue(new Error("disk full"));
+  await useLyricsStore.getState().loadLyricsForTrack(track);
+  expect(useLyricsStore.getState().lyrics?.lines[0]?.time).toBe(3.5);
+  expect(useLyricsStore.getState().isLoading).toBe(false);
+});
+
+it("preserves the saved version when refresh finds no match", async () => {
+  vi.mocked(getCachedLyrics).mockResolvedValue({ track_id: 1, synced: null, plain: "cached", instrumental: 0, fetched_at: 1 });
+  await useLyricsStore.getState().loadLyricsForTrack(track);
+  vi.mocked(fetchLyrics).mockResolvedValue({ synced: null, plain: null, instrumental: false });
+  await useLyricsStore.getState().loadLyricsForTrack(track, true);
+  expect(useLyricsStore.getState()).toMatchObject({ plainLyrics: "cached", isLoading: false, notFound: false });
+  expect(saveLyrics).not.toHaveBeenCalled();
+});

@@ -160,6 +160,10 @@ export function LyricsView() {
         )}
       </div>
 
+      {error && (lyrics || plainLyrics || isInstrumental) && (
+        <p role="status" className="mb-2 text-xs text-muted">{error}</p>
+      )}
+
       {/* Content Container */}
       <div
         ref={containerRef}

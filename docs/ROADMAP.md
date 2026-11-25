@@ -7,7 +7,7 @@
 | 2 | Library, metadata, artwork, basic playlists and persistence | Ubuntu local library checkpoint verified. Measurements in PERFORMANCE.md |
 | 3 | Playback, queue, EQ and media controls over the library | Ubuntu core playback and queue checkpoint verified. See AUDIO_ENGINE.md |
 | 4 | Discovery, download, cancellation and import | Ubuntu checkpoint verified, including conversion cancellation, retry and persistence |
-| 5 | Interactive lyrics and cache | Partial. Provider, parser and store tests exist. Offline native replay and vocal alignment remain open |
+| 5 | Interactive lyrics and cache | Ubuntu baseline verified with live retrieval, seek from pause and offline restart. Estimated vocal alignment remains approximate |
 | 6 | Home, artists, favorites and richer library navigation | Expansion after baseline |
 | 7 | Format selection, acquisition quality and recovery | Requires phase 4 |
 | 8 | Enhanced lyric timestamps and karaoke | Requires phase 5 and suitable source timings |

@@ -52,7 +52,17 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
       const lyrics = parsed?.lines.length ? parsed : null;
       const plainLyrics = lyrics ? null : data.plain;
       const notFound = !lyrics && !plainLyrics && !data.instrumental;
-      if ((!cached || refresh) && !notFound) await saveLyrics(track.id, data);
+      if (refresh && notFound && same && (previous.lyrics || previous.plainLyrics || previous.isInstrumental)) {
+        set({ isLoading: false, error: "No updated lyrics found. Showing the saved version." });
+        return;
+      }
+      if ((!cached || refresh) && !notFound) {
+        try {
+          await saveLyrics(track.id, data);
+        } catch (error) {
+          useLogStore.getState().addEntry("WARN", `Could not cache lyrics: ${String(error)}`);
+        }
+      }
       if (active === requestId) set({ lyrics, plainLyrics, isInstrumental: data.instrumental, isLoading: false, notFound });
     } catch (error) {
       if (active !== requestId) return;
