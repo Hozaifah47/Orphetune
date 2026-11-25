@@ -233,7 +233,17 @@ pub async fn download_track(
 
     let video_url = format!("https://www.youtube.com/watch?v={}", video_id);
 
+    let staging = tempfile::Builder::new()
+        .prefix(".orphetune-transfer-")
+        .tempdir_in(&dest_path)
+        .map_err(|e| format!("Cannot create transfer directory: {e}"))?;
     let mut cmd = Command::new(&ytdlp_path);
+    #[cfg(unix)]
+    cmd.process_group(0);
+    cmd.arg("--paths")
+        .arg(format!("temp:{}", staging.path().display()));
+    cmd.arg("--paths")
+        .arg(format!("home:{}", dest_path.display()));
     cmd.current_dir(&dest_path).kill_on_drop(true).args([
         "--ignore-config",
         "--no-overwrites",
@@ -289,9 +299,10 @@ pub async fn download_track(
     });
     let mut downloaded_path: Option<PathBuf> = None;
     let mut cancellation = tokio::time::interval(std::time::Duration::from_millis(200));
-    loop {
+    let mut stdout_open = true;
+    let status = loop {
         tokio::select! {
-            line_res = reader.next_line() => {
+            line_res = reader.next_line(), if stdout_open => {
                 match line_res {
                     Ok(Some(line)) => {
                         let line = line.trim();
@@ -306,18 +317,30 @@ pub async fn download_track(
                             });
                         }
                     }
-                    Ok(None) => break,
+                    Ok(None) => stdout_open = false,
                     Err(e) => {
                         let _ = on_event.send(DownloadEvent::Log {
                             level: "WARN".into(),
                             message: format!("Error reading download output: {}", e),
                         });
-                        break;
+                        stdout_open = false;
                     }
                 }
             }
+            result = child.wait(), if !stdout_open => {
+                break result.map_err(|e| format!("Failed waiting for yt-dlp: {e}"))?;
+            }
             _ = cancellation.tick() => {
                 if cancel_flag.load(Ordering::SeqCst) {
+                    #[cfg(unix)]
+                    if let Some(pid) = child.id() {
+                        // The child leads its own process group, including FFmpeg.
+                        unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
+                    }
+                    #[cfg(windows)]
+                    if let Some(pid) = child.id() {
+                        let _ = Command::new("taskkill.exe").args(["/T", "/F", "/PID", &pid.to_string()]).output().await;
+                    }
                     let _ = child.kill().await;
                     let _ = on_event.send(DownloadEvent::Log {
                         level: "WARN".into(),
@@ -327,12 +350,7 @@ pub async fn download_track(
                 }
             }
         }
-    }
-
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| format!("Failed waiting for yt-dlp child: {}", e))?;
+    };
 
     if !status.success() {
         let detail = errors.await.unwrap_or_default();

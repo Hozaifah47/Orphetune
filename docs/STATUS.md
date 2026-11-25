@@ -8,7 +8,7 @@ Baseline revision ad555c8 on stabilize. The older acceptance matrix below descri
 | F2 | package.json, vitest devDependency | P1 COMPLETE | Updated Vitest to 5.1.2. All 16 frontend tests passed and npm audit returned zero findings. |
 | L1 | src/services/db.ts, upsertTracks | P2 COMPLETE on Ubuntu fixture | Verified incremental scans, stable track IDs, playlist membership, folder artwork and restart at 50,000 paths. See PERFORMANCE.md. |
 | A1 | src/services/audioEngine.ts, loadAndPlay | P2 PARTIAL | Native WAV, MP3 and FLAC output, queue transitions, pause, seek, volume and measured EQ gain verified on Ubuntu. Physical output devices, desktop media keys and Windows/macOS remain open. |
-| D1 | src-tauri/src/sidecar/mod.rs, download process | P1 UNVERIFIED | Confirm cancelling during conversion terminates descendants and leaves no partial library entry. |
+| D1 | src-tauri/src/sidecar/mod.rs, download process | P1 COMPLETE on Ubuntu | Native cancellation terminated the FFmpeg descendant and left no files or track rows. A retry saved one MP3 and playlist membership survived restart. Windows and macOS need native testing. |
 | Y1 | src/components/lyrics/LyricsView.tsx, estimated timing | P2 PARTIAL | Plain text follows a duration-based estimate. Compare vocal onset against provider timestamps on real recordings. |
 | P1 | scripts/fetch-sidecars, FFmpeg installation | P1 PARTIAL | Host-linked executable may need libraries absent on another system. Test installers in clean OS profiles. |
 

@@ -54,3 +54,7 @@ Verified native scans through 50,000 generated tracks, restart persistence, play
 
 Phase 3 — Core playback and queue
 Repaired a pause/resume race during source changes and bounded seeks. Native output measurements and remaining platform checks are in docs/AUDIO_ENGINE.md. All 18 frontend tests and four offline Rust tests passed. Strict Clippy passed and the Ubuntu Debian package built. Next approval checkpoint is Phase 4, discovery, downloads, cancellation and ingestion.
+
+Phase 4 — Discovery, cancellation and library import
+Live yt-dlp discovery returned the Blender Foundation film. A separate Ubuntu native test supplied a controlled search result and generated audio. During conversion the Cancel control stopped the FFmpeg descendant, released the download registration, removed temporary files and left zero catalog rows. Retrying through the same result used real yt-dlp and FFmpeg, saved one MP3 and retained one Downloads playlist membership after restarting the app.
+Download intermediates now use a per-transfer temporary directory excluded from scans. Search responses are scoped to the current query and provider errors appear in Search. Nineteen frontend tests, four offline Rust tests, strict Clippy and the Debian release build passed. Provider throttling and Windows/macOS cancellation remain platform-specific release checks. Phase 5 is baseline lyrics acceptance.

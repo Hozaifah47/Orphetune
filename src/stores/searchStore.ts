@@ -26,6 +26,7 @@ interface SearchState {
   localResults: TrackRow[];
   webResults: WebSearchResult[];
   isSearchingWeb: boolean;
+  webError: string | null;
   downloads: Record<string, DownloadStatus>;
 
   setQuery: (query: string) => Promise<void>;
@@ -34,15 +35,19 @@ interface SearchState {
   cancelActiveDownload: (videoId: string) => Promise<void>;
 }
 
+let searchRevision = 0;
+
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: "",
   localResults: [],
   webResults: [],
   isSearchingWeb: false,
+  webError: null,
   downloads: {},
 
   setQuery: async (query: string) => {
-    set({ query });
+    ++searchRevision;
+    set({ query, webResults: [], webError: null, isSearchingWeb: false });
     const trimmed = query.trim();
     if (!trimmed) {
       set({ localResults: [], webResults: [] });
@@ -65,15 +70,18 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     if (!q) return;
 
     const addLog = useLogStore.getState().addEntry;
-    set({ isSearchingWeb: true });
+    const revision = ++searchRevision;
+    set({ isSearchingWeb: true, webError: null });
     addLog("FETCH", `Querying yt-dlp web search: "${q}"`);
 
     try {
       const results = await searchWebTracks(q);
+      if (revision !== searchRevision) return;
       set({ webResults: results, isSearchingWeb: false });
       addLog("INFO", `Found ${String(results.length)} web results for "${q}"`);
     } catch (e) {
-      set({ isSearchingWeb: false });
+      if (revision !== searchRevision) return;
+      set({ isSearchingWeb: false, webError: "Web search failed. Check your connection and try again." });
       const errStr = e instanceof Error ? e.message : String(e);
       addLog("WARN", `Web search unavailable/offline: ${errStr}`);
     }

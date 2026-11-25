@@ -49,6 +49,13 @@ pub fn walk_library(
         .follow_links(false)
         .follow_root_links(false)
         .into_iter()
+        .filter_entry(|e| {
+            !(e.depth() > 0
+                && e.file_type().is_dir()
+                && e.file_name()
+                    .to_string_lossy()
+                    .starts_with(".orphetune-transfer-"))
+        })
     {
         let entry = match entry {
             Ok(e) => e,

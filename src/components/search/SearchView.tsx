@@ -22,6 +22,7 @@ export function SearchView() {
   const query = useSearchStore((s) => s.query);
   const setQuery = useSearchStore((s) => s.setQuery);
   const localResults = useSearchStore((s) => s.localResults);
+  const webError = useSearchStore(s => s.webError);
   const webResults = useSearchStore((s) => s.webResults);
   const isSearchingWeb = useSearchStore((s) => s.isSearchingWeb);
   const searchWeb = useSearchStore((s) => s.searchWeb);
@@ -180,7 +181,7 @@ export function SearchView() {
             </span>
           </div>
 
-          {webResults.length === 0 ? (
+          {webError ? <p role="alert" className="text-sm text-muted">{webError}</p> : webResults.length === 0 ? (
             <p className="font-sans text-xs text-muted py-6">
               {isSearchingWeb
                 ? "Querying online sources..."
