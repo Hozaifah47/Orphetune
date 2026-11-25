@@ -4,8 +4,8 @@ Baseline revision ad555c8 on stabilize. The older acceptance matrix below descri
 
 | ID | Location | Severity and status | Finding, impact and verification |
 |---|---|---|---|
-| F1 | src/components/player/PlayerHud.tsx, TerminalLog wrapper | P2 BROKEN at default width | The xl-only container hides every event at 1200 pixels. Make diagnostics available by keyboard and pointer, then exercise it with a real log entry. |
-| F2 | package.json, vitest devDependency | P1 PARTIAL | npm audit reports two critical development dependency findings and one moderate finding. Update the test runner and verify the suite and dependency audit. |
+| F1 | src/components/player/PlayerHud.tsx, TerminalLog wrapper | P2 COMPLETE on Ubuntu | Replaced the xl-only container with a HUD disclosure. Opened the event log at 800, 1200 and 1366 pixels by keyboard and activated it in native WebKit. |
+| F2 | package.json, vitest devDependency | P1 COMPLETE | Updated Vitest to 5.1.2. All 16 frontend tests passed and npm audit returned zero findings. |
 | L1 | src/services/db.ts, upsertTracks | P2 UNVERIFIED at scale | Batched writes exist. Benchmark scans, rescans and restart persistence on a large fixture before certifying the library phase. |
 | A1 | src/services/audioEngine.ts, loadAndPlay | P2 PARTIAL | Linux playback and range seeking have prior runtime evidence. Decoder coverage, EQ listening and Windows/macOS remain open. |
 | D1 | src-tauri/src/sidecar/mod.rs, download process | P1 UNVERIFIED | Confirm cancelling during conversion terminates descendants and leaves no partial library entry. |

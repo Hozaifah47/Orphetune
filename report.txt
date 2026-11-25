@@ -39,3 +39,11 @@ The Ubuntu desktop release now offers original script and offline Latin romaniza
 The frontend suite and release build passed. Manual singing alignment and intro-marker playback on a saved song still need a listening check. The production dependency audit passed. The full npm audit reported three development dependency findings.
 
 Existing YouTube downloads now look up opening sponsor, promotion and off-topic music-video markers. The recording duration must match before the player skips. Verified opening endpoints were saved for both local tracks (5.838 and 6.873 seconds). Lyric estimates have not been aligned against vocals.
+
+Platform specification checkpoint — Ubuntu foundation
+The new master specification is in docs/SPEC.md. The existing approved branch is stabilize. docs/ARCHITECTURE.md describes the current shell, database, media pipeline and provider boundaries. docs/ROADMAP.md tracks phases 0–14 and docs/STATUS.md records the acceptance audit.
+The default window previously hid diagnostics. The HUD now provides a disclosure for recent events and a direct queue button. Keyboard diagnostics worked at widths of 800, 1200 and 1366 pixels. Both HUD actions opened their intended content in the native Ubuntu development window with an isolated profile.
+Updated the development test runner to resolve three audit findings. npm audit reported zero findings. Strict TypeScript, frontend production build, 16 frontend tests, Rust formatting, cargo check, three offline Rust tests and strict Clippy passed. The live lyrics test is opt-in. The release executable from the Debian package opened through the desktop shortcut.
+Launch with the desktop shortcut or npm run tauri dev. Test with npm test and npm run build. In src-tauri run cargo fmt --check, cargo check, cargo test and cargo clippy --all-targets -- -D warnings. Produce Linux installers with npm run tauri build.
+Next approval checkpoint is phase 2, local library persistence and scan verification. Clean installations on all target platforms, large-library benchmarks and full release acceptance remain open.
+Linux packaging completed successfully for deb, rpm and AppImage. Phase commits are 8993318 (audit), ba24a0e (test tooling), and 1ebefd9 (HUD).

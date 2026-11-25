@@ -3,7 +3,7 @@
 | Phase | Scope and dependency | Status |
 |---|---|---|
 | 0 | Audit, build and dependency baseline | Current Ubuntu audit in STATUS.md |
-| 1 | Desktop foundation, navigation, HUD and diagnostics | Current checkpoint |
+| 1 | Desktop foundation, navigation, HUD and diagnostics | Ubuntu foundation checkpoint verified |
 | 2 | Library, metadata, artwork, basic playlists and persistence | Partial. Next checkpoint is native scan and persistence acceptance |
 | 3 | Playback, queue, EQ and media controls over the library | Partial. Linux playback verified previously |
 | 4 | Discovery, download, cancellation and import | Partial. Conversion cancellation needs end-to-end verification |
