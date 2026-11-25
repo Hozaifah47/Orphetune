@@ -4,11 +4,11 @@ Ubuntu, Intel Core i5-1135G7, release executable, temporary application profile 
 
 | Previously indexed | Total valid tracks | Seconds |
 |---:|---:|---:|
-| 0 | 100 | 1.00 |
-| 100 | 1,000 | 0.10 |
-| 1,000 | 10,000 | 0.28 |
-| 10,000 | 50,000 | 1.82 |
+| 0 | 100 | 1.04 |
+| 100 | 1,000 | 0.24 |
+| 1,000 | 10,000 | 1.36 |
+| 10,000 | 50,000 | 5.36 |
 
-One run per size. The first interval includes native startup. Later intervals begin before activating Rescan library and end after SQLite reaches the expected count and the rescan control is enabled. Polling resolution was about 100 ms. Fixture creation is excluded.
+The table reports the repeat run on a fresh profile. The first interval includes native startup. Later intervals begin before activating Rescan library and end after SQLite reaches the expected count and the rescan control is enabled. Polling resolution was about 100 ms. Fixture creation is excluded.
 
-With 50,000 indexed paths, changing a five-byte FLAC title 100 ms after its original timestamp produced a visible database update in 2.02 seconds from rescan activation. SQLite retained the track ID and playlist membership. After restart there were 50,000 rows and 50,000 distinct paths. The tagged file had cached artwork. Neither the external symlink nor the corrupt MP3 added a row. Opening the large album exposed 72 track-related buttons in the native accessibility tree. Multiple buttons belong to each visible row.
+With 50,000 indexed paths, changing a five-byte FLAC title 100 ms after its original timestamp produced a visible database update in 0.42 seconds from rescan activation. SQLite retained the track ID and playlist membership. After restart there were 50,000 rows and 50,000 distinct paths. The tagged file had cached artwork. Neither the external symlink nor the corrupt MP3 added a row. Opening the large album exposed 72 track-related buttons in the native accessibility tree. Multiple buttons belong to each visible row.
