@@ -23,6 +23,8 @@ function truncateMiddle(str: string, maxLen: number): string {
 
 export function PlayerHud() {
   const setView = useAppStore(s => s.setView);
+  const introEnd = usePlayerStore(s => s.introEnd);
+  const markIntro = usePlayerStore(s => s.markIntro);
   const hasQueue = usePlayerStore(s => s.queue.length > 0);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -71,6 +73,12 @@ export function PlayerHud() {
           <p className="truncate font-sans text-xs text-muted">
             {currentTrack?.artist ?? "—"}
           </p>
+          {currentTrack && (
+            <button className="self-start text-xs text-muted hover:text-white" title="At the end of the ad, click to save the playback start for this song."
+              onClick={() => markIntro(introEnd ? 0 : usePlayerStore.getState().currentTime)}>
+              {introEnd ? `Reset intro skip (${Math.round(introEnd)}s)` : "Skip intro to here"}
+            </button>
+          )}
           {currentTrack && (
             <button onClick={() => setView("lyrics")} className="self-start text-xs text-muted underline hover:text-white">
               Lyrics

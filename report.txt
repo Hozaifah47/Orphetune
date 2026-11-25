@@ -33,3 +33,7 @@ Other release checks still open
 - Linux deb, rpm and AppImage packages were built previously. Verify the final package on a clean Linux installation, including codecs and bundled download tools. Windows and macOS installation and playback remain unverified.
 
 docs/SPEC.md contains the full acceptance criteria. docs/STATUS.md records the original audit and earlier verification results, including baseline failures that were subsequently fixed.
+
+Lyrics and intro controls
+The Ubuntu desktop release now offers original script and offline Latin romanization for supported South Asian scripts. Timed lines follow playback and seek on selection. For plain lyrics, Sync lines records each line onset during playback and saves the completed timing for that song. Skip intro to here remembers a playback start for existing downloads with an unmarked ad. Reset intro skip restores the full recording.
+The frontend suite and release build passed. Manual singing alignment and intro-marker playback on a saved song still need a listening check. The production dependency audit passed. The full npm audit reported three development dependency findings.

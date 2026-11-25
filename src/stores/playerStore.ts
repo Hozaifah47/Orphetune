@@ -31,6 +31,8 @@ interface PlayerState {
   pause: () => void;
   next: () => Promise<void>;
   previous: () => Promise<void>;
+  introEnd: number;
+  markIntro: (seconds: number) => void;
   seek: (seconds: number) => void;
   setVolume: (volume: number) => void;
   toggleShuffle: () => void;
@@ -239,6 +241,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       originalQueue,
       currentIndex: resolvedIndex,
       currentTrack: track,
+      introEnd: 0,
       isPlaying: false,
       currentTime: 0,
       duration: track.duration_ms / 1000,
@@ -248,7 +251,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       updateMediaSession(track);
       const url = await invoke<string | null>("playback_url", { path: track.path });
       if (request !== playbackRequest) return;
-      await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path));
+      const saved = Number(await Promise.resolve(getSetting("intro_" + track.id)).catch(() => null));
+      if (request !== playbackRequest) return;
+      const introEnd = saved > 0 && saved < track.duration_ms / 1000 ? saved : 0;
+      set({ introEnd });
+      await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path), introEnd);
       if (request !== playbackRequest) return;
       failedPaths.clear();
       set({ isPlaying: true });
@@ -341,7 +348,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       } else {
         // Stop playback at end of queue
         get().pause();
-        get().seek(0);
+        get().seek(get().introEnd);
         return;
       }
     }
@@ -357,8 +364,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (queue.length === 0) return;
 
     // If more than 3 seconds in, restart track
-    if (currentTime > 3) {
-      get().seek(0);
+    if (currentTime > get().introEnd + 3) {
+      get().seek(get().introEnd);
       return;
     }
 
@@ -373,6 +380,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
+  introEnd: 0,
+  markIntro: (seconds) => {
+    const { currentTrack, duration } = get();
+    if (!currentTrack || !Number.isFinite(seconds) || seconds < 0 || seconds >= duration) return;
+    set({ introEnd: seconds });
+    void persistSetting("intro_" + currentTrack.id, String(seconds));
+  },
   seek: (seconds: number) => {
     audioEngine.seek(seconds);
     set({ currentTime: seconds });
@@ -453,7 +467,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   handleTrackEnded: () => {
     const { repeat } = get();
     if (repeat === "one") {
-      get().seek(0);
+      get().seek(get().introEnd);
       void get().play();
     } else {
       void get().next();

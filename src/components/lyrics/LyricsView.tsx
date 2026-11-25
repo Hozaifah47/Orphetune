@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { romanize } from "@/services/romanize";
 import { Mic2, RefreshCw } from "lucide-react";
 import { usePlayerStore, useLyricsStore } from "@/stores";
 import { audioEngine, findActiveLyricIndex, type LrcLine } from "@/services";
@@ -15,7 +16,7 @@ export function LyricsView() {
   const play = usePlayerStore((s) => s.play);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
-  const lyrics = useLyricsStore((s) => s.lyrics);
+  const providerLyrics = useLyricsStore((s) => s.lyrics);
   const plainLyrics = useLyricsStore((s) => s.plainLyrics);
   const isInstrumental = useLyricsStore((s) => s.isInstrumental);
   const error = useLyricsStore((s) => s.error);
@@ -23,6 +24,36 @@ export function LyricsView() {
   const isLoading = useLyricsStore((s) => s.isLoading);
   const loadLyricsForTrack = useLyricsStore((s) => s.loadLyricsForTrack);
 
+  const [latin, setLatin] = useState(() => localStorage.getItem("lyrics-script") === "latin");
+  const timingKey = "lyrics-timing-" + currentTrack?.id;
+  const [tapTimes, setTapTimes] = useState<number[] | null>(null);
+  const [timingVersion, refreshTiming] = useState(0);
+  useEffect(() => setTapTimes(null), [timingKey, plainLyrics]);
+  const plainLines = useMemo(() => plainLyrics?.split(/\r?\n/).filter(line => line.trim()) ?? [], [plainLyrics]);
+  const lyrics = useMemo(() => {
+    if (providerLyrics || !plainLyrics) return providerLyrics;
+    try {
+      const saved = JSON.parse(localStorage.getItem(timingKey) ?? "null");
+      if (saved?.text !== plainLyrics || !Array.isArray(saved.times) || saved.times.length !== plainLines.length) return null;
+      return { lines: plainLines.map((text, i) => ({ id: String(i), text, time: Number(saved.times[i]) })), offsetMs: 0 };
+    } catch { return null; }
+  }, [providerLyrics, plainLyrics, plainLines, timingKey, timingVersion]);
+  function tapLine() {
+    if (!tapTimes || !isPlaying) return;
+    const time = audioEngine.getCurrentTime();
+    if (time <= (tapTimes[tapTimes.length - 1] ?? -1)) return;
+    const times = [...tapTimes, time];
+    if (times.length === plainLines.length) {
+      localStorage.setItem(timingKey, JSON.stringify({ text: plainLyrics, times }));
+      refreshTiming(n => n + 1);
+      setTapTimes(null);
+    } else setTapTimes(times);
+  }
+  const sourceLines = useMemo(() => lyrics?.lines.map(line => line.text) ?? plainLines, [lyrics, plainLines]);
+  const romanized = useMemo(() => sourceLines.map(romanize), [sourceLines]);
+  const displayLines = latin ? romanized : sourceLines;
+  const canRomanize = romanized.some((line, i) => line !== sourceLines[i]);
+  const pausedTime = usePlayerStore(s => s.isPlaying ? 0 : s.currentTime);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +98,7 @@ export function LyricsView() {
         animFrameRef.current = null;
       }
     };
-  }, [isPlaying, lyrics]);
+  }, [isPlaying, lyrics, pausedTime]);
 
   // Smoothly scroll active line into view
   useEffect(() => {
@@ -105,6 +136,19 @@ export function LyricsView() {
           )}
         </div>
 
+        {plainLines.length > 0 && !providerLyrics && (
+          <button className="text-xs text-muted hover:text-white" onClick={() => {
+            if (tapTimes) setTapTimes(null);
+            else { setTapTimes([]); seek(usePlayerStore.getState().introEnd); void play(); }
+          }}>{tapTimes ? "Cancel timing" : lyrics ? "Redo timing" : "Sync lines"}</button>
+        )}
+        {canRomanize && (
+          <select aria-label="Lyrics script" value={latin ? "latin" : "original"} className="bg-bg-dark text-white text-sm p-2"
+            onChange={event => { setLatin(event.target.value === "latin"); localStorage.setItem("lyrics-script", event.target.value); }}>
+            <option value="original">Original script</option>
+            <option value="latin">Romanized (Latin letters)</option>
+          </select>
+        )}
         {currentTrack && (
           <button
             onClick={() => void loadLyricsForTrack(currentTrack, true)}
@@ -155,17 +199,24 @@ export function LyricsView() {
               </p>
             </div>
           </div>
-        ) : plainLyrics ? (
+        ) : tapTimes ? (
+          <div className="m-auto max-w-xl text-center">
+            <p className="mb-4 text-sm text-muted">Tap each line when you hear it begin · {tapTimes.length + 1} / {plainLines.length}</p>
+            <button disabled={!isPlaying} onClick={tapLine} className="p-4 text-3xl font-bold text-white disabled:opacity-50">
+              {displayLines[tapTimes.length]}
+            </button>
+          </div>
+        ) : plainLyrics && !lyrics ? (
           /* Plain Unsynced Lyrics */
           <div className="max-w-2xl mx-auto w-full py-4">
             <p className="mb-4 text-xs text-muted">Lyrics without timestamps</p>
             <p className="font-sans text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
-              {plainLyrics}
+              {displayLines.join("\n")}
             </p>
           </div>
         ) : lyrics && lyrics.lines.length > 0 ? (
           /* Synced Lyrics with Click-to-Seek and > Active Cue */
-          <div className="flex flex-col gap-5 max-w-2xl mx-auto w-full py-12">
+          <div className="flex flex-col gap-7 max-w-2xl mx-auto w-full py-12">
             {lyrics.lines.map((line, idx) => {
               const isActive = idx === activeIndex;
               return (
@@ -182,7 +233,7 @@ export function LyricsView() {
                       : "text-muted hover:text-white"
                   }`}
                   aria-current={isActive ? "true" : undefined}
-                  aria-label={`Play from this line: ${line.text}`}
+                  aria-label={`Play from this line: ${displayLines[idx]}`}
                 >
                   {/* Leading > Cue Marker */}
                   <span
@@ -194,8 +245,8 @@ export function LyricsView() {
                   </span>
 
                   {/* Lyric Text in IBM Plex Sans */}
-                  <span className="font-sans text-base leading-snug">
-                    {line.text || "—"}
+                  <span className="font-sans text-2xl font-bold leading-snug md:text-3xl">
+                    {displayLines[idx] || "—"}
                   </span>
                 </button>
               );

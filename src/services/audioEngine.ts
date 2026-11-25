@@ -119,11 +119,12 @@ class AudioEngine {
     return this.audio;
   }
 
-  public async loadAndPlay(src: string): Promise<void> {
+  public async loadAndPlay(src: string, start = 0): Promise<void> {
     const revision = ++this.sourceRevision;
     await this.ensureContext();
     if (!this.audio || revision !== this.sourceRevision) return;
     this.audio.src = src;
+    if (start > 0) this.audio.currentTime = start;
     await this.audio.play();
   }
 
