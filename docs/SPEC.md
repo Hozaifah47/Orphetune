@@ -6,7 +6,7 @@
 
 # SECTION 1 — ROLE AND RESPONSIBILITIES
 
-You are assuming responsibility for an existing desktop music application named Orphetune, previously developed by an AI coding agent called Antigravity.
+You are assuming responsibility for an existing desktop music application named Orphetune.
 
 Act simultaneously as a:
 
@@ -30,7 +30,7 @@ Your responsibility is not merely to generate code that compiles.
 
 Your responsibility is to produce software that is genuinely functional, reliable, visually consistent, secure, efficient, maintainable, and suitable for everyday use.
 
-Do not assume that Antigravity implemented anything correctly simply because it claimed to have completed a development phase.
+Verify earlier implementation milestones against their acceptance criteria.
 
 Verify everything independently.
 
@@ -52,7 +52,7 @@ Think critically. Work methodically. Verify your conclusions.
 
 **Secondary target platforms:** Windows and macOS.
 
-**Primary implementation agent before this handoff:** Antigravity.
+
 
 **Your role:** Independent auditor, stabilizer, refinement engineer, and continuation agent.
 
@@ -66,7 +66,7 @@ It should feel like a dedicated desktop music application rather than:
 
 - A generic React website.
 - A browser dashboard inside a desktop window.
-- An AI-generated SaaS interface.
+- A generic SaaS interface.
 - A gaming dashboard.
 - A Spotify clone with different colors.
 - A fictional hacker interface.
@@ -180,9 +180,9 @@ Never delete existing source files without approval when deletion is not clearly
 
 ## 3.3 Git Branch Protection
 
-All Astra development must take place on:
+All stabilization work must take place on:
 
-`astra/stabilize`
+`stabilize`
 
 Before creating or switching branches:
 
@@ -193,7 +193,7 @@ Before creating or switching branches:
 - Identify uncommitted changes.
 - Verify that existing user changes will remain protected.
 
-Create `astra/stabilize` from the current HEAD if it does not already exist.
+Create `stabilize` from the current HEAD if it does not already exist.
 
 If the branch already exists, inspect its history and continue safely when appropriate.
 
@@ -213,7 +213,7 @@ Never:
 - Merge into main without explicit approval.
 - Commit credentials, secrets, or personal data.
 
-All permitted pushes must target `astra/stabilize`.
+All permitted pushes must target `stabilize`.
 
 ## 3.4 Commit Discipline
 
@@ -241,7 +241,7 @@ Before committing:
 4. Confirm that the change does not introduce regressions.
 5. Update the relevant acceptance criteria in `docs/STATUS.md`.
 6. Commit.
-7. Push to `astra/stabilize`, if authorized and available.
+7. Push to `stabilize`, if authorized and available.
 
 Do not create empty commits solely to satisfy a commit-message requirement.
 
@@ -352,7 +352,7 @@ First, inspect the repository sufficiently to establish:
 - Current HEAD.
 - Remote configuration.
 - Existing uncommitted changes.
-- Whether `astra/stabilize` already exists.
+- Whether `stabilize` already exists.
 
 Safely establish the development branch.
 
@@ -571,7 +571,7 @@ After stabilization:
 6. Run all required checks.
 7. Update the acceptance criteria.
 8. Complete the phase using its specified commit message.
-9. Push to `astra/stabilize`.
+9. Push to `stabilize`.
 10. STOP.
 
 Do not begin another original development phase without explicit approval.
@@ -3733,7 +3733,7 @@ Acknowledge this specification in one concise sentence.
 Then immediately proceed with the following:
 
 1. Establish repository access and inspect Git status.
-2. Safely create or continue `astra/stabilize`.
+2. Safely create or continue `stabilize`.
 3. Persist this specification to `docs/SPEC.md`.
 4. Complete Stage 1 read-only orientation.
 5. Run baseline verification commands.
@@ -3745,17 +3745,17 @@ Then immediately proceed with the following:
 11. Complete only the first unfinished original development phase.
 12. Run applicable automated and native verification.
 13. Update documentation.
-14. Commit and push verified changes to `astra/stabilize`.
+14. Commit and push verified changes to `stabilize`.
 15. Produce the complete final report.
 16. STOP.
 
-If repository access is unavailable, do not fabricate inspection or implementation. Instead, produce a specification-level risk audit, exact implementation instructions, acceptance criteria, and a prioritized handover that can be executed by Antigravity or another repository-enabled coding agent.
+If repository access is unavailable, do not fabricate inspection or implementation. Instead, produce a specification-level risk audit, exact implementation instructions, acceptance criteria, and a prioritized handover that can be executed by a contributor with repository access.
 
 Do not begin by rebuilding the application.
 
 Do not begin by adding optional features.
 
-Do not assume Antigravity's work is correct.
+Verify the existing implementation.
 
 Do not optimize before understanding the existing implementation.
 
