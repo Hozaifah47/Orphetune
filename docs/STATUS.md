@@ -1,3 +1,19 @@
+# Platform specification audit — 25 November 2026
+
+Baseline revision ad555c8 on stabilize. The older acceptance matrix below describes the inherited implementation. Later repairs and this audit supersede its historical failures.
+
+| ID | Location | Severity and status | Finding, impact and verification |
+|---|---|---|---|
+| F1 | src/components/player/PlayerHud.tsx, TerminalLog wrapper | P2 BROKEN at default width | The xl-only container hides every event at 1200 pixels. Make diagnostics available by keyboard and pointer, then exercise it with a real log entry. |
+| F2 | package.json, vitest devDependency | P1 PARTIAL | npm audit reports two critical development dependency findings and one moderate finding. Update the test runner and verify the suite and dependency audit. |
+| L1 | src/services/db.ts, upsertTracks | P2 UNVERIFIED at scale | Batched writes exist. Benchmark scans, rescans and restart persistence on a large fixture before certifying the library phase. |
+| A1 | src/services/audioEngine.ts, loadAndPlay | P2 PARTIAL | Linux playback and range seeking have prior runtime evidence. Decoder coverage, EQ listening and Windows/macOS remain open. |
+| D1 | src-tauri/src/sidecar/mod.rs, download process | P1 UNVERIFIED | Confirm cancelling during conversion terminates descendants and leaves no partial library entry. |
+| Y1 | src/components/lyrics/LyricsView.tsx, estimated timing | P2 PARTIAL | Plain text follows a duration-based estimate. Compare vocal onset against provider timestamps on real recordings. |
+| P1 | scripts/fetch-sidecars, FFmpeg installation | P1 PARTIAL | Host-linked executable may need libraries absent on another system. Test installers in clean OS profiles. |
+
+Baseline strict frontend build, 16 frontend tests, Rust formatting, cargo check, three offline Rust tests and strict Clippy passed. One live provider test is opt-in. See ROADMAP.md for phase scope.
+
 # Orphetune acceptance audit
 
 Inherited revision 17f00b7 on Ubuntu 24.04.5 x86_64, WebKitGTK 2.52.6, Node 22.23.4, Cargo 1.100.0. Only the Linux development environment was exercised. All five phases are PARTIAL. The shell crashes at launch, library writes race scan completion, the audio graph lacks smoothing, discovery accepts an untrusted directory, and stale lyrics can overwrite the current track.
