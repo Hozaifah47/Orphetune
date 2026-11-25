@@ -12,6 +12,7 @@ function truncateMiddle(str: string, maxLen: number): string {
 export function LyricsView() {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const seek = usePlayerStore((s) => s.seek);
+  const play = usePlayerStore((s) => s.play);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
   const lyrics = useLyricsStore((s) => s.lyrics);
@@ -25,7 +26,7 @@ export function LyricsView() {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lineRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const animFrameRef = useRef<number | null>(null);
 
   // Automatically trigger lyrics fetch when current track changes
@@ -80,6 +81,7 @@ export function LyricsView() {
 
   const handleLineClick = (line: LrcLine) => {
     seek(line.time);
+    if (!isPlaying) void play();
   };
 
   const trackPath = currentTrack
@@ -95,6 +97,7 @@ export function LyricsView() {
       <div className="flex items-center justify-between border-b border-non-text/20 pb-3 mb-4">
         <div>
           <h2 className="font-sans text-base font-semibold text-white">Lyrics</h2>
+          {lyrics && <p className="text-xs text-muted">Select a line to play from there.</p>}
           {trackPath && (
             <p className="font-mono text-xs text-muted" title={trackPath}>
               {trackPath}
@@ -155,6 +158,7 @@ export function LyricsView() {
         ) : plainLyrics ? (
           /* Plain Unsynced Lyrics */
           <div className="max-w-2xl mx-auto w-full py-4">
+            <p className="mb-4 text-xs text-muted">Lyrics without timestamps</p>
             <p className="font-sans text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
               {plainLyrics}
             </p>
@@ -165,26 +169,20 @@ export function LyricsView() {
             {lyrics.lines.map((line, idx) => {
               const isActive = idx === activeIndex;
               return (
-                <div
+                <button
+                  type="button"
                   key={line.id}
                   ref={(el) => {
                     lineRefs.current[idx] = el;
                   }}
                   onClick={() => handleLineClick(line)}
-                  className={`group flex items-start gap-3 cursor-pointer select-none transition-fast ${
+                  className={`group flex text-left items-start gap-3 cursor-pointer select-none transition-fast ${
                     isActive
                       ? "text-bright-red font-semibold scale-[1.02] origin-left"
                       : "text-muted hover:text-white"
                   }`}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleLineClick(line);
-                    }
-                  }}
-                  aria-label={`Lyric: ${line.text}`}
+                  aria-current={isActive ? "true" : undefined}
+                  aria-label={`Play from this line: ${line.text}`}
                 >
                   {/* Leading > Cue Marker */}
                   <span
@@ -199,7 +197,7 @@ export function LyricsView() {
                   <span className="font-sans text-base leading-snug">
                     {line.text || "—"}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>

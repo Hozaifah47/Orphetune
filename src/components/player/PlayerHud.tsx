@@ -8,6 +8,7 @@ import {
   Repeat1,
   Sliders,
 } from "lucide-react";
+import { useAppStore } from "@/stores/appStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { TerminalLog } from "@/components/hud/TerminalLog";
 import { CoverArt } from "@/components/library/CoverArt";
@@ -21,6 +22,7 @@ function truncateMiddle(str: string, maxLen: number): string {
 }
 
 export function PlayerHud() {
+  const setView = useAppStore(s => s.setView);
   const hasQueue = usePlayerStore(s => s.queue.length > 0);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -69,6 +71,11 @@ export function PlayerHud() {
           <p className="truncate font-sans text-xs text-muted">
             {currentTrack?.artist ?? "—"}
           </p>
+          {currentTrack && (
+            <button onClick={() => setView("lyrics")} className="self-start text-xs text-muted underline hover:text-white">
+              Lyrics
+            </button>
+          )}
         </div>
       </div>
 
