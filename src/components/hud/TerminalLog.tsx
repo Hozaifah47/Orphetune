@@ -22,7 +22,7 @@ export function TerminalLog() {
     }
   }, [entries]);
 
-  if (visibleEntries.length === 0) return null;
+  if (visibleEntries.length === 0) return <p className="text-xs text-muted">No recent events</p>;
 
   return (
     <div
@@ -37,7 +37,7 @@ export function TerminalLog() {
           <span className={`shrink-0 ${LEVEL_COLORS[entry.level]}`}>
             [{entry.level}]
           </span>
-          <span className="text-muted truncate">{entry.message}</span>
+          <span className="min-w-0 break-words text-muted">{entry.message}</span>
         </div>
       ))}
     </div>

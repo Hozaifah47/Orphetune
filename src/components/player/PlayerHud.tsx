@@ -7,6 +7,8 @@ import {
   Repeat,
   Repeat1,
   Sliders,
+  Terminal,
+  ListMusic,
 } from "lucide-react";
 import { useAppStore } from "@/stores/appStore";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -172,10 +174,18 @@ export function PlayerHud() {
         {/* Ouroboros volume dial */}
         <VolumeDial />
 
-        {/* Compact Terminal Log in HUD */}
-        <div className="hidden xl:block w-36 overflow-hidden">
-          <TerminalLog />
-        </div>
+        <button onClick={() => setView("queue")} aria-label="Open queue" title="Queue"
+          className="p-1 text-muted hover:text-white">
+          <ListMusic size={18} />
+        </button>
+        <details className="relative">
+          <summary aria-label="Diagnostics" title="Diagnostics" className="cursor-pointer list-none p-1 text-muted hover:text-white">
+            <Terminal size={18} />
+          </summary>
+          <section aria-label="Recent events" className="absolute bottom-full right-0 z-20 mb-2 w-80 border border-non-text/30 bg-bg-dark p-3">
+            <TerminalLog />
+          </section>
+        </details>
       </div>
     </footer>
   );
