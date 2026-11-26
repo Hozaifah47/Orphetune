@@ -362,6 +362,50 @@ pub async fn source_formats(video_id: String) -> Result<Vec<SourceFormat>, Strin
         .collect())
 }
 
+fn transfer_directory(destination: &std::path::Path) -> Result<tempfile::TempDir, String> {
+    tempfile::Builder::new()
+        .prefix(".orphetune-transfer-")
+        .tempdir_in(destination)
+        .map_err(|e| format!("Cannot create transfer directory: {e}"))
+}
+
+#[cfg(unix)]
+pub fn run_download_worker() -> Result<i32, String> {
+    use std::os::unix::process::CommandExt;
+    let staging = transfer_directory(&std::env::current_dir().map_err(|e| e.to_string())?)?;
+    let mut child = std::process::Command::new(resolve_sidecar_path("yt-dlp")?)
+        .process_group(0)
+        .stdin(std::process::Stdio::null())
+        .arg("--paths")
+        .arg(format!("temp:{}", staging.path().display()))
+        .args(std::env::args_os().skip(2))
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    // The UI owns the only write end. A crash closes it just like Cancel.
+    let mut fd = libc::pollfd {
+        fd: libc::STDIN_FILENO,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            return Ok(status.code().unwrap_or(1));
+        }
+        let ready = unsafe { libc::poll(&mut fd, 1, 150) };
+        if ready == 0
+            || (ready < 0
+                && std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted)
+        {
+            continue;
+        }
+        // The unreaped group leader pins this process group ID until wait().
+        unsafe { libc::kill(-(child.id() as i32), libc::SIGKILL) };
+        child.wait().map_err(|e| e.to_string())?;
+        return Ok(1);
+    }
+}
+
 pub async fn download_track(
     app: tauri::AppHandle,
     video_id: String,
@@ -371,7 +415,6 @@ pub async fn download_track(
 ) -> Result<ScannedTrack, String> {
     let dest_path = crate::library_access::authorize(&app, std::path::Path::new(&dest_dir), true)?;
     let video_url = video_url(&video_id)?;
-    let ytdlp_path = resolve_sidecar_path("yt-dlp")?;
     let ffmpeg_path = resolve_sidecar_path("ffmpeg")?;
 
     let dm = app.state::<DownloadManager>();
@@ -386,15 +429,25 @@ pub async fn download_track(
         message: format!("Initiating download for video id: {}", video_id),
     });
 
-    let staging = tempfile::Builder::new()
-        .prefix(".orphetune-transfer-")
-        .tempdir_in(&dest_path)
-        .map_err(|e| format!("Cannot create transfer directory: {e}"))?;
-    let mut cmd = Command::new(&ytdlp_path);
     #[cfg(unix)]
-    cmd.process_group(0);
-    cmd.arg("--paths")
-        .arg(format!("temp:{}", staging.path().display()));
+    let mut cmd = {
+        let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
+        command
+            .arg("--download-worker")
+            .stdin(std::process::Stdio::piped());
+        command
+    };
+    #[cfg(not(unix))]
+    let staging = transfer_directory(&dest_path)?;
+    #[cfg(not(unix))]
+    let mut cmd = {
+        let mut command = Command::new(resolve_sidecar_path("yt-dlp")?);
+        command
+            .kill_on_drop(true)
+            .arg("--paths")
+            .arg(format!("temp:{}", staging.path().display()));
+        command
+    };
     cmd.arg("--paths")
         .arg(format!("home:{}", dest_path.display()));
     let template = if let Some(source) = &source {
@@ -414,7 +467,7 @@ pub async fn download_track(
         ]);
         "%(title).100s [%(id)s].%(ext)s".into()
     };
-    cmd.current_dir(&dest_path).kill_on_drop(true).args([
+    cmd.current_dir(&dest_path).args([
         "--ignore-config",
         "--no-overwrites",
         "--no-playlist",
@@ -441,6 +494,8 @@ pub async fn download_track(
         .spawn()
         .map_err(|e| format!("Failed to spawn yt-dlp download: {}", e))?;
 
+    #[cfg(unix)]
+    let mut lifetime_pipe = child.stdin.take();
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let mut reader = BufReader::new(stdout).lines();
 
@@ -496,15 +551,17 @@ pub async fn download_track(
             _ = cancellation.tick() => {
                 if cancel_flag.load(Ordering::SeqCst) {
                     #[cfg(unix)]
-                    if let Some(pid) = child.id() {
-                        // The child leads its own process group, including FFmpeg.
-                        unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
+                    {
+                        drop(lifetime_pipe.take());
+                        child.wait().await.map_err(|e| e.to_string())?;
                     }
                     #[cfg(windows)]
-                    if let Some(pid) = child.id() {
-                        let _ = Command::new("taskkill.exe").args(["/T", "/F", "/PID", &pid.to_string()]).output().await;
+                    {
+                        if let Some(pid) = child.id() {
+                            let _ = Command::new("taskkill.exe").args(["/T", "/F", "/PID", &pid.to_string()]).output().await;
+                        }
+                        let _ = child.kill().await;
                     }
-                    let _ = child.kill().await;
                     let _ = on_event.send(DownloadEvent::Log {
                         level: "WARN".into(),
                         message: format!("Download cancelled for video {}", video_id),

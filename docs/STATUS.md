@@ -180,3 +180,12 @@ The baseline bundler produced deb and rpm packages before panicking when looking
 ### Phase 6 collection views
 
 A Linux WebKit test launched the new release with a copy of the pre-migration database. It added two songs to favorites and one playlist, checked their order in SQLite, requested playback through the artist page, and confirmed a recent-playback entry. After restarting, the app showed both liked tracks and one recent track. This checkpoint covers SQLite selection and playback feedback on Linux. Layout and responsiveness for unusually large numbers of separate artists remain unmeasured.
+
+### Phase 7 acquisition and process recovery
+
+An isolated Ubuntu desktop profile retrieved the official Blender Open Movies playlist, selected Big Buck Bunny and imported a 596.52-second MP3 into Downloads. A separate controlled provider exposed generated M4A audio to the bundled yt-dlp and FFmpeg. Original acquisition preserved the file bytes, artist and title. Cancelling MP3 conversion removed temporary files, and retry imported one playlist entry. Killing the desktop process with one active and one queued track, restarting and retrying both produced exactly two more playlist entries.
+
+Unix transfers now run under a worker that owns the staging directory and observes a pipe held by the desktop process. Closing the pipe stops the downloader and its FFmpeg process group before the worker releases the directory. Run `python3 scripts/test-download-worker.py` after a Unix release build to exercise both cancellation paths. Interrupted transfers restart from the beginning.
+
+The Ubuntu Debian package declares FFmpeg and GStreamer decoder dependencies. The clean-install, Windows and macOS runtime checks remain open. The Docker service on the test machine requires administrator access.
+An extracted Debian package advanced the native playback clock with MP3, WAV, FLAC, M4A, Ogg Vorbis, Opus and both AIFF filename extensions on Ubuntu.
