@@ -1,3 +1,5 @@
+import { SourceFormats } from "./SourceFormats";
+import { useTransfers } from "@/stores/transferStore";
 import { useState } from "react";
 import { Search, Globe, Download, Check, X, Play, Music } from "lucide-react";
 import { useSearchStore, usePlayerStore, usePlaylistStore, useAppStore, type WebSearchResult } from "@/stores";
@@ -27,17 +29,19 @@ export function SearchView() {
   const isSearchingWeb = useSearchStore((s) => s.isSearchingWeb);
   const searchWeb = useSearchStore((s) => s.searchWeb);
   const downloads = useSearchStore((s) => s.downloads);
-  const triggerDownload = useSearchStore((s) => s.triggerDownload);
+  const { jobs, enqueue, retry } = useTransfers();
   const cancelActiveDownload = useSearchStore((s) => s.cancelActiveDownload);
 
   const playTrack = usePlayerStore((s) => s.playTrack);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
+  const [selected, setSelected] = useState<string[]>([]);
   const [inputVal, setInputVal] = useState(query);
 
   const handleInputChange = (val: string) => {
     setInputVal(val);
+    setSelected([]);
     void setQuery(val);
   };
 
@@ -61,7 +65,7 @@ export function SearchView() {
           type="text"
           value={inputVal}
           onChange={(e) => handleInputChange(e.target.value)}
-          placeholder="Search tracks, artists, albums, or web..."
+          placeholder="Search music or paste a YouTube playlist URL"
           aria-label="Search"
           className="flex-1 bg-transparent font-mono text-sm text-white placeholder:text-muted"
         />
@@ -177,7 +181,7 @@ export function SearchView() {
               Web Results (yt-dlp)
             </h3>
             <span className="font-mono text-xs text-muted">
-              {String(webResults.length)} results
+              {webResults.length > 1 && <button className="mr-3 text-white hover:underline" onClick={() => enqueue(selected.length ? webResults.filter(item => selected.includes(item.id)) : webResults)}>{selected.length ? "Queue selected" : "Queue all"} as MP3</button>}{String(webResults.length)} results
             </span>
           </div>
 
@@ -192,7 +196,8 @@ export function SearchView() {
               {webResults.map((item: WebSearchResult) => {
                 const dl = downloads[item.id];
                 const isDownloading = dl?.status === "downloading";
-                const isComplete = dl?.status === "complete";
+                const job = jobs.find(j => j.item.id === item.id);
+                const isComplete = job?.state === "complete";
                 const isError = dl?.status === "error";
 
                 return (
@@ -201,7 +206,8 @@ export function SearchView() {
                     className="flex flex-col gap-2 border border-non-text/20 p-3 bg-bg-dark transition-fast"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      {/* Thumbnail or placeholder */}
+                      {webResults.length > 1 && <input type="checkbox" aria-label={`Select ${item.title}`} checked={selected.includes(item.id)}
+                        onChange={e => setSelected(e.target.checked ? [...selected, item.id] : selected.filter(id => id !== item.id))} />}
                       <div className="hud-corners relative flex h-10 w-10 shrink-0 items-center justify-center bg-black overflow-hidden">
                         <div className="hud-corners-bottom" aria-hidden="true" />
                         {item.thumbnail ? (
@@ -234,7 +240,7 @@ export function SearchView() {
                       {/* Download Action */}
                       <div className="shrink-0">
                         {isComplete ? (
-                          <button className="flex items-center gap-1 font-sans text-xs text-bright-red" title={dl.path}
+                          <button className="flex items-center gap-1 font-sans text-xs text-bright-red" title={job?.path ?? dl?.path}
                             onClick={() => {
                               const playlists = usePlaylistStore.getState();
                               const list = playlists.playlists.find(p => p.system_key === "downloads");
@@ -244,8 +250,8 @@ export function SearchView() {
                             <Check size={14} />
                             <span>Open Downloads</span>
                           </button>
-                        ) : dl?.status === "choosing" || dl?.status === "saving" ? (
-                          <span role="status" className="text-xs text-muted">{dl.status === "choosing" ? "Selecting folder…" : "Saving to Downloads…"}</span>
+                        ) : job?.state === "queued" ? <span role="status">Queued</span> : dl?.status === "choosing" || dl?.status === "saving" || dl?.status === "verifying" ? (
+                          <span role="status" className="text-xs text-muted">{dl.status === "choosing" ? "Selecting folder…" : dl.status === "verifying" ? "Verifying audio…" : "Saving to Downloads…"}</span>
                         ) : isDownloading ? (
                           <button
                             onClick={() => void cancelActiveDownload(item.id)}
@@ -257,7 +263,7 @@ export function SearchView() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => void triggerDownload(item)}
+                            onClick={() => job ? retry(item.id) : enqueue([item])}
                             className="flex items-center gap-1 bg-crimson px-2.5 py-1 font-sans text-xs text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
                             title={isError ? "Retry download" : "Download as MP3"}
                           >
@@ -268,16 +274,17 @@ export function SearchView() {
                       </div>
                     </div>
 
+                    {!job && <SourceFormats id={item.id} choose={source => enqueue([item], source)} />}
                     {isDownloading && (dl.percent === undefined ? (
                       <p role="status" className="text-xs text-muted">Starting download…</p>
                     ) : (
                       <div className="flex items-center gap-2">
                         <progress aria-label={`Download progress for ${item.title}`} max={100} value={dl.percent}
                           className="h-1 flex-1 accent-crimson" />
-                        <span className="text-xs text-white">{Math.floor(dl.percent)}%{dl.percent === 100 ? " · Finishing MP3…" : ""}</span>
+                        <span className="text-xs text-white">{Math.floor(dl.percent)}%{dl.percent === 100 ? " · Finishing…" : ""}</span>
                       </div>
                     ))}
-                    {isComplete && <p role="status" className="break-all text-xs text-muted">Saved to {dl.path}</p>}
+                    {isComplete && <p role="status" className="break-all text-xs text-muted">Saved to {job?.path ?? dl?.path}</p>}
                     {dl?.status === "cancelled" && <p role="status" className="text-xs text-muted">Download cancelled</p>}
 
                     {isError && dl.error && (

@@ -32,18 +32,7 @@ pub struct LinuxAudio {
 
 impl LinuxAudio {
     pub async fn url(&self, file: PathBuf) -> Result<String, String> {
-        let mime = match file
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("")
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "mp3" => "audio/mpeg",
-            "flac" => "audio/flac",
-            "wav" => "audio/wav",
-            _ => return Err("Unsupported audio file".into()),
-        };
+        let mime = crate::scanner::audio_mime(&file).ok_or("Unsupported audio file")?;
         let opened = File::open(&file).map_err(|e| e.to_string())?;
         let fd_path = format!("/proc/self/fd/{}", opened.as_raw_fd());
         if std::fs::read_link(fd_path).map_err(|e| e.to_string())? != file

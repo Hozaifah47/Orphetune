@@ -1,3 +1,4 @@
+import { DownloadsView } from "@/components/search/DownloadsView";
 import { CollectionView } from "@/components/library/CollectionView";
 import { TrackList } from "@/components/library/TrackList";
 import { usePlayerStore, useAppStore } from "@/stores";
@@ -23,6 +24,7 @@ export function MainView() {
     <main className="flex flex-1 flex-col overflow-hidden">
       {(currentView === "home" || currentView === "artists" || currentView === "songs" || currentView === "liked" || currentView === "recent") && <CollectionView key={currentView} view={currentView} />}
       {currentView === "library" && <LibraryView />}
+      {currentView === "downloads" && <DownloadsView />}
       {currentView === "search" && <SearchView />}
       {currentView === "playlists" && <PlaylistsView />}
       {currentView === "queue" && <QueueView />}

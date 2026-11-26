@@ -25,10 +25,27 @@ pub struct WebSearchResult {
 #[derive(Clone, Serialize)]
 #[serde(tag = "event", content = "data")]
 pub enum DownloadEvent {
-    Log { level: String, message: String },
-    Progress { percent: f32 },
-    Complete { track: ScannedTrack },
-    Error { message: String },
+    Log {
+        level: String,
+        message: String,
+    },
+    Progress {
+        percent: f32,
+    },
+    Transfer {
+        percent: Option<f32>,
+        bytes: Option<u64>,
+        total: Option<u64>,
+        speed: Option<f64>,
+        eta: Option<u64>,
+    },
+    Verifying,
+    Complete {
+        track: ScannedTrack,
+    },
+    Error {
+        message: String,
+    },
 }
 
 /// Active download cancel handles
@@ -114,7 +131,32 @@ pub async fn search_web(
     if query.trim().is_empty() || query.len() > 512 {
         return Err("Enter a search up to 512 bytes.".into());
     }
-    let search_arg = format!("ytsearch10:{}", query);
+    let search_arg = if let Ok(url) = reqwest::Url::parse(query.trim()) {
+        if url.scheme() != "https"
+            || !matches!(
+                url.host_str(),
+                Some("youtube.com" | "www.youtube.com" | "music.youtube.com")
+            )
+            || !matches!(url.path(), "/playlist" | "/watch")
+        {
+            return Err("Enter a search or a YouTube album or playlist URL.".into());
+        }
+        let list = url
+            .query_pairs()
+            .find(|(k, _)| k == "list")
+            .map(|(_, v)| v)
+            .ok_or("The URL is missing a playlist ID.")?;
+        if list.is_empty()
+            || !list
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+        {
+            return Err("Invalid playlist ID.".into());
+        }
+        format!("https://www.youtube.com/playlist?list={list}")
+    } else {
+        format!("ytsearch10:{}", query)
+    };
 
     let output = Command::new(&ytdlp_path)
         .args([
@@ -177,6 +219,31 @@ pub async fn search_web(
     Ok(results)
 }
 
+fn transfer_event(line: &str) -> Option<DownloadEvent> {
+    let fields: Vec<_> = line
+        .strip_prefix("orphetune-transfer:")?
+        .split('|')
+        .collect();
+    let [percent, bytes, total, estimate, speed, eta] = fields.as_slice() else {
+        return None;
+    };
+    Some(DownloadEvent::Transfer {
+        percent: percent
+            .trim()
+            .trim_end_matches('%')
+            .parse()
+            .ok()
+            .filter(|v| (0.0..=100.0).contains(v)),
+        bytes: bytes.parse().ok(),
+        total: total.parse().ok().or_else(|| estimate.parse().ok()),
+        speed: speed
+            .parse::<f64>()
+            .ok()
+            .filter(|n| n.is_finite() && *n >= 0.0),
+        eta: eta.parse().ok(),
+    })
+}
+
 fn download_percent(line: &str) -> Option<f32> {
     let value = line
         .strip_prefix("orphetune-progress:")?
@@ -201,14 +268,7 @@ fn parses_only_measured_download_percentages() {
     }
 }
 
-/// Download a video as mp3 using yt-dlp sidecar + ffmpeg sidecar
-pub async fn download_track(
-    app: tauri::AppHandle,
-    video_id: String,
-    dest_dir: String,
-    on_event: Channel<DownloadEvent>,
-) -> Result<ScannedTrack, String> {
-    let dest_path = crate::library_access::authorize(&app, std::path::Path::new(&dest_dir), true)?;
+fn video_url(video_id: &str) -> Result<String, String> {
     if video_id.len() != 11
         || !video_id
             .bytes()
@@ -216,6 +276,101 @@ pub async fn download_track(
     {
         return Err("Invalid video identifier.".into());
     }
+    Ok(format!("https://www.youtube.com/watch?v={video_id}"))
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SourceSelection {
+    id: String,
+    ext: String,
+}
+
+impl SourceSelection {
+    fn selector(&self) -> Result<String, String> {
+        if self.id.is_empty()
+            || self.id.len() > 64
+            || !self
+                .id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+            || !matches!(
+                self.ext.as_str(),
+                "mp3" | "m4a" | "flac" | "ogg" | "opus" | "wav" | "aiff" | "aif"
+            )
+        {
+            return Err("Unsupported source format.".into());
+        }
+        Ok(format!(
+            "bestaudio[format_id={}][ext={}][vcodec=none]",
+            self.id, self.ext
+        ))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SourceFormat {
+    #[serde(rename = "format_id")]
+    id: String,
+    ext: String,
+    acodec: String,
+    vcodec: String,
+    abr: Option<f64>,
+    asr: Option<f64>,
+    audio_channels: Option<u32>,
+    filesize: Option<u64>,
+    filesize_approx: Option<u64>,
+    has_drm: Option<bool>,
+}
+
+#[tauri::command]
+pub async fn source_formats(video_id: String) -> Result<Vec<SourceFormat>, String> {
+    let url = video_url(&video_id)?;
+    let output = Command::new(resolve_sidecar_path("yt-dlp")?)
+        .args([
+            "--ignore-config",
+            "--no-playlist",
+            "--dump-single-json",
+            "--",
+            &url,
+        ])
+        .kill_on_drop(true)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err("Could not retrieve formats from YouTube. Try again.".into());
+    }
+    let info: serde_json::Value =
+        serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
+    Ok(info["formats"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .rev()
+        .filter_map(|value| serde_json::from_value::<SourceFormat>(value.clone()).ok())
+        .filter(|f| {
+            f.vcodec == "none"
+                && !matches!(f.acodec.as_str(), "none" | "unknown" | "")
+                && f.has_drm != Some(true)
+                && (SourceSelection {
+                    id: f.id.clone(),
+                    ext: f.ext.clone(),
+                })
+                .selector()
+                .is_ok()
+        })
+        .collect())
+}
+
+pub async fn download_track(
+    app: tauri::AppHandle,
+    video_id: String,
+    dest_dir: String,
+    source: Option<SourceSelection>,
+    on_event: Channel<DownloadEvent>,
+) -> Result<ScannedTrack, String> {
+    let dest_path = crate::library_access::authorize(&app, std::path::Path::new(&dest_dir), true)?;
+    let video_url = video_url(&video_id)?;
     let ytdlp_path = resolve_sidecar_path("yt-dlp")?;
     let ffmpeg_path = resolve_sidecar_path("ffmpeg")?;
 
@@ -231,8 +386,6 @@ pub async fn download_track(
         message: format!("Initiating download for video id: {}", video_id),
     });
 
-    let video_url = format!("https://www.youtube.com/watch?v={}", video_id);
-
     let staging = tempfile::Builder::new()
         .prefix(".orphetune-transfer-")
         .tempdir_in(&dest_path)
@@ -244,19 +397,27 @@ pub async fn download_track(
         .arg(format!("temp:{}", staging.path().display()));
     cmd.arg("--paths")
         .arg(format!("home:{}", dest_path.display()));
+    let template = if let Some(source) = &source {
+        cmd.args(["-f", &source.selector()?]);
+        format!("%(title).100s (source {}) [%(id)s].%(ext)s", source.id)
+    } else {
+        cmd.args([
+            "-x",
+            "--audio-format",
+            "mp3",
+            "--audio-quality",
+            "0",
+            "--sponsorblock-remove",
+            "sponsor,selfpromo,music_offtopic",
+            "--embed-metadata",
+            "--embed-thumbnail",
+        ]);
+        "%(title).100s [%(id)s].%(ext)s".into()
+    };
     cmd.current_dir(&dest_path).kill_on_drop(true).args([
         "--ignore-config",
         "--no-overwrites",
-        "--sponsorblock-remove",
-        "sponsor,selfpromo,music_offtopic",
         "--no-playlist",
-        "-x",
-        "--audio-format",
-        "mp3",
-        "--audio-quality",
-        "0",
-        "--embed-metadata",
-        "--embed-thumbnail",
         "--ffmpeg-location",
         &ffmpeg_path.to_string_lossy(),
         "--newline",
@@ -267,9 +428,9 @@ pub async fn download_track(
         "--print",
         "after_move:orphetune-file:%(filepath)j",
         "--progress-template",
-        "download:orphetune-progress:%(progress._percent_str)s",
+        "download:orphetune-transfer:%(progress._percent_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s",
         "-o",
-        "%(title).100s [%(id)s].%(ext)s",
+        &template,
         &video_url,
     ]);
 
@@ -306,7 +467,9 @@ pub async fn download_track(
                 match line_res {
                     Ok(Some(line)) => {
                         let line = line.trim();
-                        if let Some(percent) = download_percent(line) {
+                        if let Some(event) = transfer_event(line) {
+                            let _ = on_event.send(event);
+                        } else if let Some(percent) = download_percent(line) {
                             let _ = on_event.send(DownloadEvent::Progress { percent });
                         } else if let Some(json) = line.strip_prefix("orphetune-file:") {
                             downloaded_path = serde_json::from_str(json).ok();
@@ -371,12 +534,13 @@ pub async fn download_track(
         message: format!("Download complete for {}. Scanning file...", video_id),
     });
 
-    let file_path = downloaded_path.ok_or("yt-dlp did not report the completed MP3 path.")?;
+    let _ = on_event.send(DownloadEvent::Verifying);
+    let file_path = downloaded_path.ok_or("yt-dlp did not report the completed audio path.")?;
     if !file_path
         .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"))
+        .is_some_and(|ext| ext.eq_ignore_ascii_case(source.as_ref().map_or("mp3", |s| &s.ext)))
     {
-        return Err("The completed download was not an MP3.".into());
+        return Err("The downloaded file has an unexpected format.".into());
     }
 
     // Ingest the downloaded track using scan_file logic

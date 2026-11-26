@@ -441,9 +441,10 @@ pub async fn download_track(
     app: tauri::AppHandle,
     video_id: String,
     dest_dir: String,
+    source: Option<crate::sidecar::SourceSelection>,
     on_event: Channel<crate::sidecar::DownloadEvent>,
 ) -> Result<ScannedTrack, String> {
-    crate::sidecar::download_track(app, video_id, dest_dir, on_event).await
+    crate::sidecar::download_track(app, video_id, dest_dir, source, on_event).await
 }
 
 #[tauri::command]

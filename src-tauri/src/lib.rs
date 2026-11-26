@@ -110,6 +110,7 @@ pub fn run() {
             commands::fetch_cover_art,
             commands::get_ytdlp_version,
             commands::search_web_tracks,
+            sidecar::source_formats,
             commands::download_track,
             commands::cancel_download,
             commands::fetch_lyrics,

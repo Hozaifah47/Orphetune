@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
-import { House, Users, Heart, History, Disc3, Library, Search, ListMusic, Mic2, ListEnd } from "lucide-react";
+import { Download, House, Users, Heart, History, Disc3, Library, Search, ListMusic, Mic2, ListEnd } from "lucide-react";
 import { useAppStore, usePlaylistStore } from "@/stores";
 import type { View } from "@/stores";
 
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "artists", label: "Artists", icon: Users },
   { view: "liked", label: "Liked songs", icon: Heart },
   { view: "recent", label: "Recently played", icon: History },
+  { view: "downloads", label: "Downloads", icon: Download },
   { view: "search", label: "Search", icon: Search },
   { view: "playlists", label: "Playlists", icon: ListMusic },
   { view: "queue", label: "Queue", icon: ListEnd },

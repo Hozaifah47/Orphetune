@@ -5,17 +5,25 @@ use std::time::UNIX_EPOCH;
 
 use walkdir::WalkDir;
 
-/// Audio extensions we accept (lowercase).
-const AUDIO_EXTENSIONS: &[&str] = &["mp3", "flac", "wav"];
+/// Containers supported by the metadata reader and native player.
+pub fn audio_mime(path: &Path) -> Option<&'static str> {
+    let extension = path.extension()?.to_str()?;
+    [
+        ("mp3", "audio/mpeg"),
+        ("flac", "audio/flac"),
+        ("wav", "audio/wav"),
+        ("m4a", "audio/mp4"),
+        ("ogg", "audio/ogg"),
+        ("opus", "audio/ogg"),
+        ("aif", "audio/aiff"),
+        ("aiff", "audio/aiff"),
+    ]
+    .into_iter()
+    .find_map(|(ext, mime)| extension.eq_ignore_ascii_case(ext).then_some(mime))
+}
 
 pub fn is_audio(path: &Path) -> bool {
-    path.extension()
-        .and_then(|s| s.to_str())
-        .is_some_and(|extension| {
-            AUDIO_EXTENSIONS
-                .iter()
-                .any(|allowed| extension.eq_ignore_ascii_case(allowed))
-        })
+    audio_mime(path).is_some()
 }
 
 /// Represents a file the frontend already knows about.

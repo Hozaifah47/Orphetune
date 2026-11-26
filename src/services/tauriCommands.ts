@@ -49,6 +49,8 @@ export interface WebSearchResult {
 export type DownloadEventData =
   | { event: "Log"; data: { level: string; message: string } }
   | { event: "Progress"; data: { percent: number } }
+  | { event: "Verifying" }
+  | { event: "Transfer"; data: { percent: number | null; bytes: number | null; total: number | null; speed: number | null; eta: number | null } }
   | { event: "Complete"; data: { track: ScannedTrack } }
   | { event: "Error"; data: { message: string } };
 
@@ -108,16 +110,35 @@ export async function searchWebTracks(
   return invoke<WebSearchResult[]>("search_web_tracks", { query });
 }
 
+export interface SourceFormat {
+  format_id: string;
+  ext: string;
+  acodec: string;
+  abr: number | null;
+  asr: number | null;
+  audio_channels: number | null;
+  filesize: number | null;
+  filesize_approx: number | null;
+}
+
+export interface SourceSelection { id: string; ext: string }
+
+export function sourceFormats(videoId: string): Promise<SourceFormat[]> {
+  return invoke("source_formats", { videoId });
+}
+
 export async function downloadTrack(
   videoId: string,
   destDir: string,
   onEvent: (event: DownloadEventData) => void,
+  source?: SourceSelection,
 ): Promise<ScannedTrack> {
   const channel = new Channel<DownloadEventData>();
   channel.onmessage = onEvent;
   return invoke<ScannedTrack>("download_track", {
     videoId,
     destDir,
+    source,
     onEvent: channel,
   });
 }

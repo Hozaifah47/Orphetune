@@ -1,3 +1,4 @@
+import type { SourceSelection } from "@/services/tauriCommands";
 import { create } from "zustand";
 import {
   searchTracks,
@@ -16,8 +17,9 @@ import { useLogStore } from "./logStore";
 export interface DownloadStatus {
   videoId: string;
   percent?: number;
+  metrics?: Extract<DownloadEventData, {event: "Transfer"}>["data"];
   path?: string;
-  status: "choosing" | "saving" | "cancelled" | "downloading" | "complete" | "error";
+  status: "choosing" | "verifying" | "saving" | "cancelled" | "downloading" | "complete" | "error";
   error?: string;
 }
 
@@ -31,7 +33,7 @@ interface SearchState {
 
   setQuery: (query: string) => Promise<void>;
   searchWeb: (query?: string) => Promise<void>;
-  triggerDownload: (item: WebSearchResult) => Promise<void>;
+  triggerDownload: (item: WebSearchResult, source?: SourceSelection) => Promise<void>;
   cancelActiveDownload: (videoId: string) => Promise<void>;
 }
 
@@ -87,9 +89,9 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
   },
 
-  triggerDownload: async (item) => {
+  triggerDownload: async (item, source) => {
     const previous = get().downloads[item.id]?.status;
-    if (previous === "choosing" || previous === "downloading" || previous === "saving") return;
+    if (previous === "choosing" || previous === "downloading" || previous === "saving" || previous === "verifying") return;
     const update = (status: Omit<DownloadStatus, "videoId">) => {
       set(state => ({ downloads: { ...state.downloads, [item.id]: { videoId: item.id, ...status } } }));
     };
@@ -108,9 +110,11 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       update({ status: "downloading" });
       const track = await downloadTrack(item.id, root, (event: DownloadEventData) => {
         if (get().downloads[item.id]?.status !== "downloading") return;
+        if (event.event === "Verifying") update({status: "verifying"});
+        if (event.event === "Transfer") update({status: "downloading", percent: event.data.percent ?? undefined, metrics: event.data});
         if (event.event === "Progress") update({ status: "downloading", percent: event.data.percent });
         if (event.event === "Log") addLog("FETCH", event.data.message);
-      });
+      }, source);
       update({ status: "saving", path: track.path });
       await saveDownload(track);
       update({ status: "complete", path: track.path });

@@ -48,9 +48,15 @@ pub fn extract_metadata(file: &DiscoveredFile, covers_dir: &Path) -> Result<Scan
 
     let tagged_file = Probe::open(path)
         .map_err(|e| format!("Cannot open {}: {}", path_str, e))?
+        .guess_file_type()
+        .map_err(|e| format!("Cannot identify {}: {}", path_str, e))?
         .options(ParseOptions::new())
         .read()
         .map_err(|e| format!("Cannot parse {}: {}", path_str, e))?;
+
+    if format == "flac" && tagged_file.file_type() != lofty::file::FileType::Flac {
+        return Err(format!("Expected a FLAC stream in {path_str}"));
+    }
 
     let duration_ms = tagged_file.properties().duration().as_millis() as u64;
 
