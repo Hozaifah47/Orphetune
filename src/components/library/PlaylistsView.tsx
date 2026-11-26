@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Pencil, ListMusic, ArrowLeft, Play } from "lucide-react";
+import { useCallback } from "react";
+import { ListMusic, ArrowLeft, Play } from "lucide-react";
 import { usePlaylistStore, usePlayerStore } from "@/stores";
 import { TrackList } from "./TrackList";
-import type { PlaylistRow } from "@/services/db";
+
 
 export function PlaylistsView() {
   const playTrack = usePlayerStore((s) => s.playTrack);
@@ -10,42 +10,10 @@ export function PlaylistsView() {
     playlists,
     selectedPlaylistId,
     selectedPlaylistTracks,
-    loadPlaylists,
-    createPlaylist,
-    renamePlaylist,
-    deletePlaylist,
     selectPlaylist,
     removeTrack,
     reorderTracks,
   } = usePlaylistStore();
-
-  const [newName, setNewName] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
-
-  useEffect(() => {
-    void loadPlaylists();
-  }, [loadPlaylists]);
-
-  const handleCreate = useCallback(async () => {
-    const name = newName.trim();
-    if (!name) return;
-    await createPlaylist(name);
-    setNewName("");
-  }, [newName, createPlaylist]);
-
-  const handleRename = useCallback(
-    async (playlist: PlaylistRow) => {
-      const name = editName.trim();
-      if (!name || name === playlist.name) {
-        setEditingId(null);
-        return;
-      }
-      await renamePlaylist(playlist.id, name);
-      setEditingId(null);
-    },
-    [editName, renamePlaylist],
-  );
 
   const handleRemoveTrack = useCallback(
     async (trackId: number) => {
@@ -58,7 +26,7 @@ export function PlaylistsView() {
 
   // Playlist detail view.
   if (selectedPlaylistId !== null) {
-    const playlist = playlists.find((p) => p.id === selectedPlaylistId);
+
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4">
@@ -70,9 +38,6 @@ export function PlaylistsView() {
             >
               <ArrowLeft size={18} />
             </button>
-            <h2 className="font-sans text-lg font-semibold text-white">
-              {playlist?.name ?? "Playlist"}
-            </h2>
             <span className="font-mono text-xs text-muted">
               {String(selectedPlaylistTracks.length)} tracks
             </span>
@@ -114,32 +79,6 @@ export function PlaylistsView() {
   // Playlists list.
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-6">
-      <h2 className="mb-4 font-sans text-lg font-semibold text-white">
-        Playlists
-      </h2>
-
-      {/* Create new */}
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void handleCreate();
-          }}
-          placeholder="New playlist name..."
-          className="flex-1 border-b border-non-text/30 bg-transparent py-1 font-mono text-sm text-white placeholder:text-muted focus:border-crimson"
-        />
-        <button
-          onClick={() => void handleCreate()}
-          disabled={!newName.trim()}
-          className="text-muted transition-fast hover:text-white disabled:opacity-40"
-          aria-label="Create playlist"
-        >
-          <Plus size={18} />
-        </button>
-      </div>
-
       {playlists.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-2">
@@ -148,52 +87,13 @@ export function PlaylistsView() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 overflow-y-auto">
           {playlists.map((playlist) => (
             <div
               key={playlist.id}
               className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-fast"
             >
-              {editingId === playlist.id ? (
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void handleRename(playlist);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  onBlur={() => void handleRename(playlist)}
-                  autoFocus
-                  className="flex-1 bg-transparent font-sans text-sm text-white"
-                />
-              ) : (
-                <button
-                  onClick={() => void selectPlaylist(playlist.id)}
-                  className="flex-1 text-left font-sans text-sm text-white"
-                >
-                  {playlist.name}
-                </button>
-              )}
-              {!playlist.system_key && <>
-              <button
-                onClick={() => {
-                  setEditingId(playlist.id);
-                  setEditName(playlist.name);
-                }}
-                className="text-muted transition-fast hover:text-muted"
-                aria-label={`Rename ${playlist.name}`}
-              >
-                <Pencil size={14} />
-              </button>
-              <button
-                onClick={() => void deletePlaylist(playlist.id)}
-                className="text-muted transition-fast hover:text-bright-red"
-                aria-label={`Delete ${playlist.name}`}
-              >
-                <Trash2 size={14} />
-              </button>
-              </>}
+              <button className="w-full truncate py-1 text-left text-sm hover:text-bright-red" onClick={() => void selectPlaylist(playlist.id)}>{playlist.name}</button>
             </div>
           ))}
         </div>

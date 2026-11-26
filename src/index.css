@@ -27,9 +27,37 @@
     overflow: hidden;
     font-family: "IBM Plex Sans", system-ui, sans-serif;
     color: #ffffff;
-    background: linear-gradient(180deg, #080202 0%, #110505 100%);
+    background: #0d0404;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    border: 1px solid #d32f2f;
+    border-radius: 0;
+    background: #110505;
+    cursor: pointer;
+  }
+
+  input[type="checkbox"]:hover,
+  input[type="checkbox"]:checked {
+    border-color: #ff3333;
+  }
+
+  input[type="checkbox"]:checked::before {
+    content: "";
+    width: 5px;
+    height: 9px;
+    border: solid #ff3333;
+    border-width: 0 2px 2px 0;
+    transform: translateY(-1px) rotate(45deg);
   }
 
   /* Visible focus ring: 2px #FF3333, 2px offset */

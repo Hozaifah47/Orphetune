@@ -4,10 +4,12 @@ export type View = "downloads" | "home" | "artists" | "liked" | "recent" | "song
 
 interface AppState {
   currentView: View;
-  setView: (view: View) => void;
+  detail: string;
+  setView: (view: View, detail?: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   currentView: "home",
-  setView: (view) => set({ currentView: view }),
+  detail: "",
+  setView: (view, detail = "") => set({ currentView: view, detail }),
 }));

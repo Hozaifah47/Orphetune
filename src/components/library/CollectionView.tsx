@@ -13,7 +13,8 @@ export function CollectionView({view}: {view: keyof typeof headings}) {
   const enqueue = usePlayerStore(s => s.enqueueMany);
   const playlists = usePlaylistStore(s => s.playlists);
   const { liked, recent, setLiked, addToPlaylist } = useCollections();
-  const [artist, setArtist] = useState("");
+  const artist = useAppStore(s => view === "artists" ? s.detail : "");
+  const setArtist = (name: string) => useAppStore.getState().setView("artists", name);
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState(new Set<number>());
   const [notice, setNotice] = useState("");
@@ -39,15 +40,13 @@ export function CollectionView({view}: {view: keyof typeof headings}) {
   function clear() { setSelected(new Set()); setPlaylistMenu(false); }
   const button = "px-2 py-1 text-sm text-muted hover:text-white focus-visible:outline";
   return <section className="flex min-h-0 flex-1 flex-col">
-    <header className="flex flex-wrap items-center gap-3 px-6 py-4">
+    {view !== "home" && <header className="flex flex-wrap items-center gap-3 px-6 py-4">
       {artist && <button className={button} onClick={() => {setArtist("");clear();}}>All artists</button>}
-      <h2 className="text-lg font-semibold">{artist || headings[view]}</h2>
-      {view !== "home" && <input aria-label={`Filter ${headings[view]}`} placeholder="Filter…" value={filter}
-        className="ml-auto border-b border-non-text/40 bg-transparent px-2 py-1" onChange={e => {setFilter(e.target.value);clear();}} />}
-    </header>
+      {artist && <h2 className="text-lg font-semibold">{artist}</h2>}
+      <input aria-label={`Filter ${headings[view]}`} placeholder="Filter…" value={filter}
+        className="ml-auto border-b border-non-text/40 bg-transparent px-2 py-1" onChange={e => {setFilter(e.target.value);clear();}} />
+    </header>}
     {view === "home" && <div className="px-6 pb-3">
-      <div className="mb-4 flex flex-wrap gap-2">{(["library","artists","liked","playlists"] as const).map((route,i) =>
-        <button key={route} className={button} onClick={() => useAppStore.getState().setView(route)}>{["Albums","Artists","Liked songs","Playlists"][i]}</button>)}</div>
       {list.length > 0 && <h3>{recent.length ? "Recently played" : "Recently added"}</h3>}
       {!folder && <button className={button} onClick={() => void pickFolder()}>Choose music folder</button>}
     </div>}

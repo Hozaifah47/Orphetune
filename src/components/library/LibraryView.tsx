@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { FolderOpen, RefreshCw, ArrowLeft, Play } from "lucide-react";
-import { useLibraryStore, usePlayerStore } from "@/stores";
+import { useLibraryStore, usePlayerStore, useAppStore } from "@/stores";
 import { TerminalLog } from "@/components/hud/TerminalLog";
 import { AlbumGrid } from "./AlbumGrid";
 import { TrackList } from "./TrackList";
@@ -22,7 +22,8 @@ export function LibraryView() {
   } = useLibraryStore();
 
   const playTrack = usePlayerStore((s) => s.playTrack);
-  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
+  const key = useAppStore(s => s.detail);
+  const selectedAlbum = albums.find(a => a.key === key);
 
 
   const albumTracks: TrackRow[] = selectedAlbum
@@ -30,11 +31,11 @@ export function LibraryView() {
     : [];
 
   const handleAlbumClick = useCallback((album: Album) => {
-    setSelectedAlbum(album);
+    useAppStore.getState().setView("library", album.key);
   }, []);
 
   const handleBack = useCallback(() => {
-    setSelectedAlbum(null);
+    useAppStore.getState().setView("library");
   }, []);
 
   if (!initialized) return null;
@@ -107,9 +108,7 @@ export function LibraryView() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4">
-        <h2 className="font-sans text-lg font-semibold text-white">
-          Albums
-        </h2>
+
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-muted">
             <input type="checkbox" checked={onlineArt} onChange={event => void setOnlineArt(event.target.checked)} />

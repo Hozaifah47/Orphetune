@@ -38,6 +38,7 @@ interface SearchState {
 }
 
 let searchRevision = 0;
+let localRevision = 0;
 
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: "",
@@ -49,7 +50,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   setQuery: async (query: string) => {
     ++searchRevision;
-    set({ query, webResults: [], webError: null, isSearchingWeb: false });
+    const revision = ++localRevision;
+    set({ query, localResults: [], webResults: [], webError: null, isSearchingWeb: false });
     const trimmed = query.trim();
     if (!trimmed) {
       set({ localResults: [], webResults: [] });
@@ -59,7 +61,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     // Instant local results from SQLite
     try {
       const local = await searchTracks(trimmed);
-      if (get().query === query) set({ localResults: local });
+      if (revision === localRevision) set({ localResults: local });
     } catch (e) {
       useLogStore
         .getState()

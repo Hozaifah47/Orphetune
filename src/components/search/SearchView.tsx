@@ -1,7 +1,8 @@
 import { SourceFormats } from "./SourceFormats";
 import { useTransfers } from "@/stores/transferStore";
+import { useCollectionMatches } from "./useCollectionMatches";
 import { useState } from "react";
-import { Search, Globe, Download, Check, X, Play, Music } from "lucide-react";
+import { Globe, Download, Check, X, Play, Music } from "lucide-react";
 import { useSearchStore, usePlayerStore, usePlaylistStore, useAppStore, type WebSearchResult } from "@/stores";
 import { TerminalLog } from "@/components/hud/TerminalLog";
 import { CoverArt } from "@/components/library/CoverArt";
@@ -22,7 +23,7 @@ function truncateMiddle(str: string, maxLen: number): string {
 
 export function SearchView() {
   const query = useSearchStore((s) => s.query);
-  const setQuery = useSearchStore((s) => s.setQuery);
+  const groups = useCollectionMatches();
   const localResults = useSearchStore((s) => s.localResults);
   const webError = useSearchStore(s => s.webError);
   const webResults = useSearchStore((s) => s.webResults);
@@ -37,58 +38,13 @@ export function SearchView() {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
   const [selected, setSelected] = useState<string[]>([]);
-  const [inputVal, setInputVal] = useState(query);
-
-  const handleInputChange = (val: string) => {
-    setInputVal(val);
-    setSelected([]);
-    void setQuery(val);
-  };
-
-  const handleSearchSubmit = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const trimmed = inputVal.trim();
-    if (trimmed) {
-      void searchWeb(trimmed);
-    }
-  };
-
   return (
-    <div className="flex flex-1 flex-col overflow-hidden p-6 gap-6">
-      {/* Search Input Bar */}
-      <form
-        onSubmit={handleSearchSubmit}
-        className="flex items-center gap-3 border-b border-non-text/30 pb-3"
-      >
-        <Search size={18} className="text-muted shrink-0" />
-        <input
-          type="text"
-          value={inputVal}
-          onChange={(e) => handleInputChange(e.target.value)}
-          placeholder="Search music or paste a YouTube playlist URL"
-          aria-label="Search"
-          className="flex-1 bg-transparent font-mono text-sm text-white placeholder:text-muted"
-        />
-        {inputVal && (
-          <button
-            type="button"
-            onClick={() => handleInputChange("")}
-            className="text-muted transition-fast hover:text-white"
-            aria-label="Clear search"
-          >
-            <X size={16} />
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={!inputVal.trim() || isSearchingWeb}
-          className="flex items-center gap-1.5 border border-non-text/40 bg-transparent px-3 py-1 font-sans text-xs text-white transition-fast hover:border-crimson hover:bg-crimson/10 disabled:opacity-40"
-        >
-          <Globe size={14} />
-          <span>{isSearchingWeb ? "Searching..." : "Search Web"}</span>
-        </button>
-      </form>
-
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-4 gap-4">
+      <div className="flex items-center justify-end gap-4 text-sm text-muted">
+        <button onClick={() => useAppStore.getState().setView("downloads")}>Download activity</button>
+        <button disabled={!query.trim() || isSearchingWeb} onClick={() => void searchWeb()} className="flex items-center gap-2 py-2 text-white disabled:text-muted">
+          <Globe size={15}/>{isSearchingWeb ? "Searching online…" : "Search online"}</button>
+      </div>
       {/* Terminal Log During Operations */}
       {isSearchingWeb && (
         <div className="border border-non-text/20 p-2 bg-bg-dark">
@@ -105,10 +61,14 @@ export function SearchView() {
               Local Library
             </h3>
             <span className="font-mono text-xs text-muted">
-              {String(localResults.length)} results
+              {String(localResults.length)} songs
             </span>
           </div>
 
+          {Object.entries(groups).map(([group,items]) => items.length > 0 && <section key={group}>
+            <h4 className="text-xs text-muted">{group === "playlists" ? "Playlists" : group === "artists" ? "Artists" : "Albums"}</h4>
+            {items.map(item => <button key={item.key} className="block py-1 text-left text-sm hover:text-bright-red" onClick={item.open}>{item.label}</button>)}
+          </section>)}
           {!query.trim() ? (
             <p className="font-sans text-xs text-muted py-6">
               Type in the box above to search local files instantly.
@@ -178,7 +138,7 @@ export function SearchView() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-non-text/20 pb-2">
             <h3 className="font-sans text-sm font-semibold tracking-wide text-white">
-              Web Results (yt-dlp)
+              Online discovery
             </h3>
             <span className="font-mono text-xs text-muted">
               {webResults.length > 1 && <button className="mr-3 text-white hover:underline" onClick={() => enqueue(selected.length ? webResults.filter(item => selected.includes(item.id)) : webResults)}>{selected.length ? "Queue selected" : "Queue all"} as MP3</button>}{String(webResults.length)} results

@@ -125,7 +125,7 @@ export function LyricsView() {
       {/* Header with track name and reload action */}
       <div className="flex items-center justify-between border-b border-non-text/20 pb-3 mb-4">
         <div>
-          <h2 className="font-sans text-base font-semibold text-white">Lyrics</h2>
+
           {lyrics && <p className="text-xs text-muted">{"estimated" in lyrics && lyrics.estimated ? "Estimated timing · " : ""}Select a line to play from there.</p>}
           {trackPath && (
             <p className="font-mono text-xs text-muted" title={trackPath}>

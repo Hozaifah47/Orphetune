@@ -6,7 +6,7 @@ export function DownloadsView() {
   const progress = useSearchStore(s => s.downloads);
   const firstQueued = jobs.find(j => j.state === "queued");
   return <section className="overflow-y-auto p-6">
-    <h2 className="mb-4 text-lg font-semibold">Downloads</h2>
+
     <label className="text-sm">Simultaneous transfers <select className="bg-bg-dark p-1 text-white" value={concurrency}
       onChange={e => setConcurrency(Number(e.target.value))}>{[1,2,3].map(n => <option key={n}>{n}</option>)}</select></label>
     {!jobs.length && <p className="mt-4 text-sm text-muted">Download a track from Search to see its progress here.</p>}
