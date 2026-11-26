@@ -120,3 +120,16 @@ describe("findActiveLyricIndex", () => {
     expect(findActiveLyricIndex([], 10)).toBe(-1);
   });
 });
+
+it("preserves word spacing and shifts word timing in repeated choruses", () => {
+  const {lines} = parseLrc("[offset:100]\n[00:02][00:12]<00:02>Sing <00:02.5>along<00:03>");
+  expect(lines.map(l => l.text)).toEqual(["Sing along","Sing along"]);
+  expect(lines[1]?.words).toEqual([{time:12.1,text:"Sing "},{time:12.6,text:"along"}]);
+  expect(findActiveLyricIndex(lines[1]!.words!,12.59)).toBe(0);
+});
+
+it("retains the line when word stamps go backwards", () => {
+  const line = parseLrc("[00:01]<00:03>One <00:02>two").lines[0]!;
+  expect(line.text).toBe("One two");
+  expect(line.words).toBeUndefined();
+});

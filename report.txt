@@ -76,3 +76,8 @@ Resume with the packaged-app M4A acquisition and MP3 cancellation/retry checks. 
 Phase 7 acceptance — Ubuntu
 Verified original M4A bytes and tags, MP3 cancellation and retry, real playlist acquisition, and batch recovery after force-killing the desktop app. The Unix worker stops the downloader and encoder on parent exit and cleans up its temporary directory. A regression script exercises this with real FFmpeg. The Debian package now requests FFmpeg and GStreamer decoders. See docs/STATUS.md for the test scope.
 The next major phase is advanced interactive lyrics. Clean-install and cross-platform acceptance remain release requirements.
+
+Phase 8 — Interactive lyrics
+Enhanced LRC word timestamps follow the playback clock. Open Lyrics for line seeking, original or romanized script, fullscreen, compact lyrics and a side panel. Edit or import accepts local text and LRC files, timing shifts and a user-supplied translation. Local edits persist independently from the original source. Sibling LRC files and embedded lyric text can be read from the authorized library.
+On Ubuntu, a disposable offline profile verified line seeking, fullscreen, editing, user translation, both panel modes, restart persistence and restoration of the source lyrics. The native file pickers imported and exported an enhanced LRC file with identical timestamps and text. All 26 frontend and five Rust tests passed, including live LRCLIB lookup. TypeScript, production packaging, Rust formatting and strict Clippy passed.
+Word-level highlighting needs word timestamps. Plain lyrics use approximate line timing. Translation in this release is user-supplied. Advanced audio processing is the next roadmap phase. Clean-install and cross-platform acceptance remain outstanding.

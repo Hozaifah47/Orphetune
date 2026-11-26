@@ -36,6 +36,7 @@ export {
   searchWebTracks,
   downloadTrack,
   cancelDownload,
+  localLyrics,
   fetchLyrics,
 } from "./tauriCommands";
 export { audioEngine } from "./audioEngine";

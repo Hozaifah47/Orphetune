@@ -10,7 +10,7 @@
 | 5 | Interactive lyrics and cache | Ubuntu baseline verified with live retrieval, seek from pause and offline restart. Estimated vocal alignment remains approximate |
 | 6 | Home, artists, favorites and richer library navigation | Ubuntu library interface implemented. Migration and per-track results verified in the local build |
 | 7 | Format selection, acquisition quality and recovery | Ubuntu checkpoint verified with original M4A and FLAC, MP3 cancellation, live playlist acquisition and batch retry after forced exit |
-| 8 | Enhanced lyric timestamps and karaoke | Requires phase 5 and suitable source timings |
+| 8 | Enhanced lyric timestamps and karaoke | Ubuntu checkpoint verified for word-timed playback, offline editing, import/export and display modes |
 | 9 | Advanced audio controls | Requires verified audio baseline |
 | 10 | Local discovery and personalization | Requires reliable library data and listening events |
 | 11 | Statistics and listening insights | Requires persisted history |

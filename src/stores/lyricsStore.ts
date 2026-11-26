@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   getCachedLyrics,
+  localLyrics,
   saveLyrics,
   fetchLyrics,
   parseLrc,
@@ -15,6 +16,7 @@ interface LyricsState {
   plainLyrics: string | null;
   isInstrumental: boolean;
   isLoading: boolean;
+  fromFile: boolean;
   notFound: boolean;
   error: string | null;
 
@@ -25,6 +27,7 @@ interface LyricsState {
 let requestId = 0;
 
 export const useLyricsStore = create<LyricsState>((set, get) => ({
+  fromFile: false,
   currentTrackId: null,
   lyrics: null,
   plainLyrics: null,
@@ -42,6 +45,14 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
     const active = ++requestId;
     set({ currentTrackId: track.id, isLoading: true, error: null, notFound: false });
     try {
+      const fileText = refresh ? null : await localLyrics(track.path).catch(() => null);
+      if (active !== requestId) return;
+      if (fileText) {
+        const parsed = parseLrc(fileText);
+        set({fromFile:true, lyrics:parsed.lines.length ? parsed : null, plainLyrics: parsed.lines.length ? null : fileText,
+          isInstrumental:false, isLoading:false, notFound:false});
+        return;
+      }
       const cached = refresh ? null : await getCachedLyrics(track.id);
       if (active !== requestId) return;
       const data = cached && (cached.synced || cached.plain || cached.instrumental)
@@ -63,7 +74,7 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
           useLogStore.getState().addEntry("WARN", `Could not cache lyrics: ${String(error)}`);
         }
       }
-      if (active === requestId) set({ lyrics, plainLyrics, isInstrumental: data.instrumental, isLoading: false, notFound });
+      if (active === requestId) set({ fromFile:false, lyrics, plainLyrics, isInstrumental: data.instrumental, isLoading: false, notFound });
     } catch (error) {
       if (active !== requestId) return;
       set({ error: "Lyrics could not be loaded. Try again.", isLoading: false });
@@ -75,7 +86,8 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
     ++requestId;
     set({
       error: null,
-      currentTrackId: null,
+      fromFile: false,
+  currentTrackId: null,
       lyrics: null,
       plainLyrics: null,
       isInstrumental: false,

@@ -1,10 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { useLyricsStore } from "./lyricsStore";
-import { fetchLyrics, getCachedLyrics, saveLyrics, type TrackRow } from "@/services";
+import { localLyrics, fetchLyrics, getCachedLyrics, saveLyrics, type TrackRow } from "@/services";
 
 vi.mock("@/services", async (original) => ({
   ...await original<typeof import("@/services")>(),
-  getCachedLyrics: vi.fn(), fetchLyrics: vi.fn(), saveLyrics: vi.fn(),
+  localLyrics: vi.fn(), getCachedLyrics: vi.fn(), fetchLyrics: vi.fn(), saveLyrics: vi.fn(),
 }));
 
 const track: TrackRow = { id: 1, title: "First", artist: "Artist", album: "Album",
@@ -13,6 +13,7 @@ const track: TrackRow = { id: 1, title: "First", artist: "Artist", album: "Album
 beforeEach(() => {
   vi.resetAllMocks();
   useLyricsStore.getState().clear();
+  vi.mocked(localLyrics).mockResolvedValue(null);
   vi.mocked(getCachedLyrics).mockResolvedValue(null);
 });
 
@@ -52,5 +53,13 @@ it("preserves the saved version when refresh finds no match", async () => {
   vi.mocked(fetchLyrics).mockResolvedValue({ synced: null, plain: null, instrumental: false });
   await useLyricsStore.getState().loadLyricsForTrack(track, true);
   expect(useLyricsStore.getState()).toMatchObject({ plainLyrics: "cached", isLoading: false, notFound: false });
+  expect(saveLyrics).not.toHaveBeenCalled();
+});
+
+it("uses lyrics from the music folder without contacting a provider", async () => {
+  vi.mocked(localLyrics).mockResolvedValue("[00:01]<00:01>One <00:02>two");
+  await useLyricsStore.getState().loadLyricsForTrack(track);
+  expect(useLyricsStore.getState().lyrics?.lines[0]?.words).toHaveLength(2);
+  expect(fetchLyrics).not.toHaveBeenCalled();
   expect(saveLyrics).not.toHaveBeenCalled();
 });

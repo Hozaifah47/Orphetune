@@ -150,6 +150,73 @@ fn normalize(name: &str) -> String {
         .join(" ")
 }
 
+#[tauri::command]
+pub async fn export_lyrics(app: tauri::AppHandle, text: String) -> Result<bool, String> {
+    use std::io::Write;
+    use tauri_plugin_dialog::DialogExt;
+    if text.len() > 2 * 1024 * 1024 {
+        return Err("Lyrics exceed the 2 MiB export limit.".into());
+    }
+    let Some(file) = app
+        .dialog()
+        .file()
+        .set_file_name("lyrics.lrc")
+        .add_filter("LRC lyrics", &["lrc"])
+        .blocking_save_file()
+    else {
+        return Ok(false);
+    };
+    let path = file.into_path().map_err(|e| e.to_string())?;
+    let parent = path.parent().ok_or("Choose a file location.")?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
+    temporary
+        .write_all(text.as_bytes())
+        .map_err(|e| e.to_string())?;
+    temporary.persist(path).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn local_lyrics(app: tauri::AppHandle, path: String) -> Result<Option<String>, String> {
+    let audio = crate::library_access::authorize(&app, std::path::Path::new(&path), false)?;
+    tauri::async_runtime::spawn_blocking(move || read_local_lyrics(&audio))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn read_local_lyrics(audio: &std::path::Path) -> Result<Option<String>, String> {
+    use lofty::file::TaggedFileExt;
+    use std::io::Read;
+    const LIMIT: u64 = 524288;
+    let sibling = audio.with_extension("lrc");
+    if std::fs::symlink_metadata(&sibling).is_ok_and(|m| m.is_file() && m.len() <= LIMIT) {
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+        }
+        if let Ok(file) = options.open(&sibling) {
+            let mut text = String::new();
+            if file.metadata().is_ok_and(|m| m.is_file())
+                && file.take(LIMIT + 1).read_to_string(&mut text).is_ok()
+                && text.len() <= LIMIT as usize
+                && !text.trim().is_empty()
+            {
+                return Ok(Some(text));
+            }
+        }
+    }
+    let tagged = lofty::read_from_path(audio).map_err(|e| e.to_string())?;
+    Ok(tagged
+        .tags()
+        .iter()
+        .find_map(|tag| tag.get_string(&lofty::tag::ItemKey::Lyrics))
+        .filter(|s| !s.trim().is_empty() && s.len() <= LIMIT as usize)
+        .map(str::to_owned))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

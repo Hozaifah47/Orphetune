@@ -114,6 +114,8 @@ pub fn run() {
             commands::download_track,
             commands::cancel_download,
             commands::fetch_lyrics,
+            lyrics::export_lyrics,
+            lyrics::local_lyrics,
             commands::lookup_intro,
         ])
         .run(tauri::generate_context!())

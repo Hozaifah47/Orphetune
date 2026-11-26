@@ -160,3 +160,7 @@ export async function fetchLyrics(
     durationS,
   });
 }
+
+export function localLyrics(path: string): Promise<string | null> {
+  return invoke("local_lyrics", { path });
+}
