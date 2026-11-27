@@ -1,8 +1,10 @@
+import { readEq, type GainTags } from "@/services/equalizer";
 import { useCollections } from "./collectionStore";
 import { create } from "zustand";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { audioEngine, type EqSettings } from "@/services/audioEngine";
-import { getSetting, setSetting, type TrackRow } from "@/services/db";
+import { useAppStore } from "./appStore";
+import { getAllTracks, getSetting, setSetting, type TrackRow } from "@/services/db";
 import { useLogStore } from "./logStore";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -13,6 +15,7 @@ interface PlayerState {
   currentIndex: number;
   currentTrack: TrackRow | null;
   isPlaying: boolean;
+  playbackNotice: string | null;
   currentTime: number;
   duration: number;
   volume: number;
@@ -39,7 +42,7 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
-  setEq: (band: "bass" | "mid" | "treble", value: number) => void;
+  applyEq: (value: Partial<EqSettings>) => void;
   resetEq: () => void;
   setIsEqOpen: (open: boolean) => void;
   updateTime: (current: number, duration: number) => void;
@@ -110,6 +113,16 @@ async function persistSetting(key: string, value: string): Promise<void> {
   }
 }
 
+let gainRequest = 0;
+async function loadGainTags() {
+  const revision = ++gainRequest;
+  const { currentTrack, eq } = usePlayerStore.getState();
+  audioEngine.setGainTags(null);
+  if (!currentTrack || eq.normalization === "off") return;
+  const tags = await invoke<GainTags>("replay_gain", {path:currentTrack.path}).catch(() => null);
+  if (revision === gainRequest && usePlayerStore.getState().currentTrack === currentTrack) audioEngine.setGainTags(tags);
+}
+
 let playbackRequest = 0;
 let loadedTrack: TrackRow | null = null;
 const failedPaths = new Set<string>();
@@ -120,12 +133,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentIndex: -1,
   currentTrack: null,
   isPlaying: false,
+  playbackNotice: null,
   currentTime: 0,
   duration: 0,
   volume: 0.8,
   shuffle: false,
   repeat: "off",
-  eq: { bass: 0, mid: 0, treble: 0 },
+  eq: readEq(null),
   isEqOpen: false,
   initialized: false,
 
@@ -146,18 +160,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           ? (repStr as RepeatMode)
           : "off";
 
-      let eq: EqSettings = { bass: 0, mid: 0, treble: 0 };
-      if (eqStr) {
-        try {
-          const parsed = JSON.parse(eqStr) as Partial<EqSettings>;
-          eq = {
-            bass: typeof parsed.bass === "number" ? parsed.bass : 0,
-            mid: typeof parsed.mid === "number" ? parsed.mid : 0,
-            treble: typeof parsed.treble === "number" ? parsed.treble : 0,
-          };
-        } catch {
-          // Keep default
-        }
+      let eq = readEq(null);
+      try {
+        if (eqStr) eq = readEq(JSON.parse(eqStr));
+      } catch {
+        useLogStore.getState().addEntry("WARN", "Saved equalizer settings could not be read.");
       }
 
       audioEngine.setVolume(volume);
@@ -246,6 +253,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       originalQueue,
       currentIndex: resolvedIndex,
       currentTrack: track,
+      playbackNotice: null,
       introEnd: 0,
       isPlaying: false,
       currentTime: 0,
@@ -267,6 +275,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (request !== playbackRequest) return;
       const introEnd = saved > 0 && saved < track.duration_ms / 1000 ? saved : 0;
       set({ introEnd });
+      await loadGainTags();
+      if (request !== playbackRequest) return;
       await audioEngine.loadAndPlay(url ?? convertFileSrc(track.path), introEnd);
       if (request !== playbackRequest) return;
       loadedTrack = track;
@@ -310,25 +320,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   togglePlay: async () => {
-    const { isPlaying, currentTrack, queue, currentIndex } = get();
-    if (isPlaying) {
-      get().pause();
-    } else {
-      if (!currentTrack && queue.length > 0) {
-        const nextIdx = currentIndex >= 0 ? currentIndex : 0;
-        const trackToPlay = queue[nextIdx];
-        if (trackToPlay) {
-          await get().playTrack(trackToPlay);
-          return;
-        }
-      }
-      await get().play();
-    }
+    if (get().isPlaying) get().pause();
+    else await get().play();
   },
 
   play: async () => {
-    const { currentTrack } = get();
-    if (!currentTrack) return;
+    const { currentTrack, queue, currentIndex } = get();
+    if (!currentTrack) {
+      const queued = queue[Math.max(0, currentIndex)];
+      if (queued) return get().playTrack(queued);
+      const request = ++playbackRequest;
+      try {
+        const tracks = await getAllTracks();
+        if (request !== playbackRequest) return;
+        const recentId = useCollections.getState().recent[0];
+        const first = tracks.find(track => track.id === recentId) ?? tracks[0];
+        if (first) return get().setQueue([first, ...tracks.filter(track => track.id !== first.id)]);
+        set({ playbackNotice: "Choose a music folder or download a song to start playback." });
+        useAppStore.getState().setView("library");
+      } catch {
+        if (request === playbackRequest) set({ playbackNotice: "Could not load the music library." });
+      }
+      return;
+    }
     if (loadedTrack !== currentTrack || failedPaths.has(currentTrack.path)) {
       failedPaths.clear();
       await get().playTrack(currentTrack);
@@ -459,19 +473,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     void persistSetting("player_repeat", newRepeat);
   },
 
-  setEq: (band: "bass" | "mid" | "treble", value: number) => {
-    const clamped = Math.max(-12, Math.min(12, Math.round(value * 2) / 2));
-    const newEq = { ...get().eq, [band]: clamped };
-    audioEngine.setEq(band, clamped);
-    set({ eq: newEq });
-    void persistSetting("player_eq", JSON.stringify(newEq));
+  applyEq: value => {
+    const previous = get().eq;
+    const eq = readEq({ ...previous, ...value });
+    set({ eq });
+    audioEngine.setAllEq(eq);
+    if (previous.normalization !== eq.normalization) void loadGainTags();
+    void persistSetting("player_eq", JSON.stringify(eq));
   },
 
   resetEq: () => {
-    const zeroEq: EqSettings = { bass: 0, mid: 0, treble: 0 };
-    audioEngine.setAllEq(zeroEq);
-    set({ eq: zeroEq });
-    void persistSetting("player_eq", JSON.stringify(zeroEq));
+    get().applyEq({ bass: 0, mid: 0, treble: 0, preamp: 0, bands: readEq(null).bands });
   },
 
   setIsEqOpen: (open: boolean) => {
@@ -505,6 +517,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       void get().playTrack(next);
     } else {
       get().pause();
+      const missing = /no such file|cannot find the file|os error 2\b/i.test(errorDetails ?? "");
+      set({ playbackNotice: missing
+        ? "Audio file missing. Restore the file or download it again."
+        : "Playback failed. Open Diagnostics for details." });
       log("WARN", "Playback stopped. No playable tracks remain in this queue.");
     }
   },

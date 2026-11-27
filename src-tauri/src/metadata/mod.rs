@@ -198,3 +198,46 @@ fn mime_to_ext(mime: Option<&lofty::picture::MimeType>) -> &'static str {
         _ => "jpg",
     }
 }
+
+#[derive(serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayGain {
+    track_gain: Option<f64>,
+    album_gain: Option<f64>,
+    track_peak: Option<f64>,
+    album_peak: Option<f64>,
+}
+
+#[tauri::command]
+pub async fn replay_gain(app: tauri::AppHandle, path: String) -> Result<ReplayGain, String> {
+    use lofty::tag::ItemKey;
+    let file = crate::library_access::authorize(&app, Path::new(&path), false)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let audio = lofty::read_from_path(file).map_err(|e| e.to_string())?;
+        let number = |key: ItemKey| {
+            audio
+                .tags()
+                .iter()
+                .filter_map(|tag| tag.get_string(&key))
+                .find_map(|s| {
+                    let lower = s.trim().to_ascii_lowercase();
+                    lower
+                        .trim_end_matches("db")
+                        .trim()
+                        .parse::<f64>()
+                        .ok()
+                        .filter(|v| v.is_finite())
+                })
+        };
+        let gain = |key| number(key).filter(|v| (-60.0..=30.0).contains(v));
+        let peak = |key| number(key).filter(|v| *v > 0.0 && *v <= 16.0);
+        Ok(ReplayGain {
+            track_gain: gain(ItemKey::ReplayGainTrackGain),
+            album_gain: gain(ItemKey::ReplayGainAlbumGain),
+            track_peak: peak(ItemKey::ReplayGainTrackPeak),
+            album_peak: peak(ItemKey::ReplayGainAlbumPeak),
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

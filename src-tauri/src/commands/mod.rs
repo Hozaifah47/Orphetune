@@ -512,3 +512,38 @@ pub async fn lookup_intro(video_id: String, duration: f64) -> Result<f64, String
     }
     Ok(end)
 }
+
+#[tauri::command]
+pub async fn export_eq_preset(app: tauri::AppHandle, text: String) -> Result<bool, String> {
+    if text.len() > 16384 {
+        return Err("Preset exceeds 16 KiB.".into());
+    }
+    save_text_file(app, "equalizer.json", "json", &text)
+}
+
+pub(crate) fn save_text_file(
+    app: tauri::AppHandle,
+    name: &str,
+    extension: &str,
+    text: &str,
+) -> Result<bool, String> {
+    use std::io::Write;
+    use tauri_plugin_dialog::DialogExt;
+    let Some(file) = app
+        .dialog()
+        .file()
+        .set_file_name(name)
+        .add_filter(extension, &[extension])
+        .blocking_save_file()
+    else {
+        return Ok(false);
+    };
+    let path = file.into_path().map_err(|e| e.to_string())?;
+    let parent = path.parent().ok_or("Choose a file location.")?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
+    temporary
+        .write_all(text.as_bytes())
+        .map_err(|e| e.to_string())?;
+    temporary.persist(path).map_err(|e| e.to_string())?;
+    Ok(true)
+}

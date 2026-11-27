@@ -1,14 +1,15 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { getAllTracks } from "@/services/db";
 import { audioEngine } from "@/services/audioEngine";
 import { usePlayerStore } from "./playerStore";
 import type { TrackRow } from "@/services/db";
 
-vi.mock("./collectionStore", () => ({useCollections: {getState: () => ({played: vi.fn()})}}));
+vi.mock("./collectionStore", () => ({useCollections: {getState: () => ({played: vi.fn(), recent: [2]})}}));
 vi.mock("@tauri-apps/api/core", () => ({invoke: vi.fn(), convertFileSrc: (p: string) => p}));
-vi.mock("@/services/db", () => ({getSetting: vi.fn(), setSetting: vi.fn()}));
+vi.mock("@/services/db", () => ({getAllTracks: vi.fn(), getSetting: vi.fn(), setSetting: vi.fn()}));
 vi.mock("@/services/audioEngine", () => ({
-  audioEngine: {pause: vi.fn(), loadAndPlay: vi.fn(), seek: vi.fn()},
+  audioEngine: {setGainTags: vi.fn(), pause: vi.fn(), loadAndPlay: vi.fn(), seek: vi.fn()},
 }));
 
 const first: TrackRow = { id: 1, title: "First", artist: "Artist", album: "Album", path: "/first.wav", format: "wav", mtime: 0, size: 1, duration_ms: 6000, cover_path: null, track_no: null };
@@ -65,4 +66,17 @@ it("bounds seeks at both ends of the track", async () => {
     expect(audioEngine.seek).toHaveBeenLastCalledWith(expected);
     expect(usePlayerStore.getState().currentTime).toBe(expected);
   }
+});
+
+it("starts the last played library song when Play is pressed after launch", async () => {
+  vi.mocked(getAllTracks).mockResolvedValue([first,second]);
+  await usePlayerStore.getState().togglePlay();
+  expect(audioEngine.loadAndPlay).toHaveBeenCalledWith(second.path,0);
+  expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([2,1]);
+});
+
+it("offers a library action when Play is pressed with no songs", async () => {
+  vi.mocked(getAllTracks).mockResolvedValue([]);
+  await usePlayerStore.getState().togglePlay();
+  expect(usePlayerStore.getState().playbackNotice).toContain("Choose a music folder");
 });

@@ -29,7 +29,7 @@ export function PlayerHud() {
   const setView = useAppStore(s => s.setView);
   const introEnd = usePlayerStore(s => s.introEnd);
   const markIntro = usePlayerStore(s => s.markIntro);
-  const hasQueue = usePlayerStore(s => s.queue.length > 0);
+  const notice = usePlayerStore(s => s.playbackNotice);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const liked = useCollections(s => !!currentTrack && s.liked.has(currentTrack.id));
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -55,6 +55,7 @@ export function PlayerHud() {
       aria-label="Player HUD"
       className="hud-corners relative flex h-24 shrink-0 items-center justify-between border-t border-non-text/20 px-6 bg-bg-dark"
     >
+      {notice && <p role="status" className="absolute bottom-full inset-x-0 border-t border-non-text/30 bg-bg-dark px-5 py-2 text-sm text-white">{notice}</p>}
       <div className="hud-corners-bottom" aria-hidden="true" />
 
       {/* Left: Track Info & Cover */}
@@ -120,7 +121,6 @@ export function PlayerHud() {
 
           {/* Play / Pause Button */}
           <button
-            disabled={!currentTrack && !hasQueue}
             onClick={() => void togglePlay()}
             aria-label={isPlaying ? "Pause" : "Play"}
             className="flex h-8 w-8 items-center justify-center bg-crimson text-white transition-fast hover:bg-bright-red hover:text-bg-dark"
@@ -128,7 +128,7 @@ export function PlayerHud() {
             {isPlaying ? (
               <Pause size={16} fill="currentColor" />
             ) : (
-              <Play size={16} fill="currentColor" className="translate-x-0.5" />
+              <Play size={16} fill="currentColor" strokeWidth={1.5} />
             )}
           </button>
 
@@ -172,7 +172,7 @@ export function PlayerHud() {
           className={`p-1.5 transition-fast ${
             isEqOpen ? "text-bright-red" : "text-muted hover:text-white"
           }`}
-          title="3-Band Equalizer"
+          title="Equalizer"
         >
           <Sliders size={18} />
         </button>

@@ -11,7 +11,7 @@
 | 6 | Home, artists, favorites and richer library navigation | Ubuntu library interface implemented. Migration and per-track results verified in the local build |
 | 7 | Format selection, acquisition quality and recovery | Ubuntu checkpoint verified with original M4A and FLAC, MP3 cancellation, live playlist acquisition and batch retry after forced exit |
 | 8 | Enhanced lyric timestamps and karaoke | Ubuntu checkpoint verified for word-timed playback, offline editing, import/export and display modes |
-| 9 | Advanced audio controls | Requires verified audio baseline |
+| 9 | Advanced audio controls | Ubuntu EQ, normalization, headroom and transition measurements in AUDIO_ENGINE.md |
 | 10 | Local discovery and personalization | Requires reliable library data and listening events |
 | 11 | Statistics and listening insights | Requires persisted history |
 | 12 | Customization and portability | Requires stable settings and schema |

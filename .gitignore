@@ -12,3 +12,7 @@ Thumbs.db
 prompt.txt
 *.prompt.txt
 
+
+# Music downloaded into the development library
+/src-tauri/*.mp3
+/src-tauri/.orphetune-transfer-*/

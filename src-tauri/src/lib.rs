@@ -114,6 +114,8 @@ pub fn run() {
             commands::download_track,
             commands::cancel_download,
             commands::fetch_lyrics,
+            metadata::replay_gain,
+            commands::export_eq_preset,
             lyrics::export_lyrics,
             lyrics::local_lyrics,
             commands::lookup_intro,
